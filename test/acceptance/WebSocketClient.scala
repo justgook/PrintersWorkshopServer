@@ -1,4 +1,6 @@
 package acceptance
+
+import akka.testkit.TestProbe
 import org.jboss.netty.bootstrap.ClientBootstrap
 import org.jboss.netty.channel._
 import socket.nio.NioClientSocketChannelFactory
@@ -46,13 +48,13 @@ object WebSocketClient {
   object Messages {
     sealed trait WebSocketClientMessage
     case object Connecting extends WebSocketClientMessage
-    case class ConnectionFailed(client: WebSocketClient, reason: Option[Throwable] = None) extends WebSocketClientMessage
-    case class Connected(client: WebSocketClient) extends WebSocketClientMessage
-    case class TextMessage(client: WebSocketClient, text: String) extends WebSocketClientMessage
-    case class WriteFailed(client: WebSocketClient, message: String, reason: Option[Throwable]) extends WebSocketClientMessage
+    case class ConnectionFailed(reason: Option[Throwable] = None) extends WebSocketClientMessage
+    case object Connected extends WebSocketClientMessage
+    case class TextMessage(text: String) extends WebSocketClientMessage
+    case class WriteFailed(message: String, reason: Option[Throwable]) extends WebSocketClientMessage
     case object Disconnecting extends WebSocketClientMessage
-    case class Disconnected(client: WebSocketClient, reason: Option[Throwable] = None) extends WebSocketClientMessage
-    case class Error(client: WebSocketClient, th: Throwable) extends WebSocketClientMessage
+    case class Disconnected(reason: Option[Throwable] = None) extends WebSocketClientMessage
+    case class Error(th: Throwable) extends WebSocketClientMessage
   }
 
   type Handler = PartialFunction[Messages.WebSocketClientMessage, Unit]
@@ -73,11 +75,16 @@ object WebSocketClient {
     WebSocketClient(url) { case x => handle ! x }
   }
 
+  def apply(url: URI, handle: TestProbe): WebSocketClient = {
+    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
+    WebSocketClient(url) { case x => handle.ref ! x }
+  }
+
   private class WebSocketClientHandler(handshaker: WebSocketClientHandshaker, client: WebSocketClient) extends SimpleChannelUpstreamHandler {
 
     import Messages._
     override def channelClosed(ctx: ChannelHandlerContext, e: ChannelStateEvent) {
-      client.handler(Disconnected(client))
+      client.handler(Disconnected())
     }
 
     override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent) {
@@ -87,9 +94,11 @@ object WebSocketClient {
             + resp.getContent.toString(CharsetUtil.UTF_8) + ")")
         case resp: HttpResponse =>
           handshaker.finishHandshake(ctx.getChannel, e.getMessage.asInstanceOf[HttpResponse])
-          client.handler(Connected(client))
+          client.handler(Connected)
 
-        case f: TextWebSocketFrame => client.handler(TextMessage(client, f.getText))
+        case f: TextWebSocketFrame =>
+          println("<< " + f.getText)
+          client.handler(TextMessage(f.getText))
         case _: PongWebSocketFrame =>
         case _: CloseWebSocketFrame => ctx.getChannel.close()
       }
@@ -97,16 +106,17 @@ object WebSocketClient {
 
 
     override def exceptionCaught(ctx: ChannelHandlerContext, e: ExceptionEvent) {
-      client.handler(Error(client, e.getCause))
+      client.handler(Error(e.getCause))
       e.getChannel.close()
     }
 
   }
   private class DefaultWebSocketClient(
-                                        val url: URI,
-                                        version: WebSocketVersion,
-                                        private[this] val _handler: Handler,
-                                        val reader: FrameReader = defaultFrameReader) extends WebSocketClient {
+    val url: URI,
+    version: WebSocketVersion,
+    private[this] val _handler: Handler,
+    val reader: FrameReader = defaultFrameReader) extends WebSocketClient {
+
     val normalized = url.normalize()
     val tgt = if (normalized.getPath == null || normalized.getPath.trim().isEmpty) {
       new URI(normalized.getScheme, normalized.getAuthority,"/", normalized.getQuery, normalized.getFragment)
@@ -121,7 +131,7 @@ object WebSocketClient {
     val handler = _handler orElse defaultHandler
 
     private def defaultHandler: Handler = {
-      case Error(_, ex) => ex.printStackTrace()
+      case Error(ex) => ex.printStackTrace()
       case _: WebSocketClientMessage =>
     }
 
@@ -148,7 +158,7 @@ object WebSocketClient {
             synchronized { channel = future.getChannel }
             handshaker.handshake(channel)
           } else {
-            handler(ConnectionFailed(this, Option(future.getCause)))
+            handler(ConnectionFailed(Option(future.getCause)))
           }
         }
         handler(Connecting)
@@ -166,9 +176,10 @@ object WebSocketClient {
     }
 
     def send(message: String, charset: Charset = CharsetUtil.UTF_8) = {
+      println(s">> $message")
       channel.write(new TextWebSocketFrame(ChannelBuffers.copiedBuffer(message, charset))).addListener(futureListener { fut =>
         if (!fut.isSuccess) {
-          handler(WriteFailed(this, message, Option(fut.getCause)))
+          handler(WriteFailed(message, Option(fut.getCause)))
         }
       })
     }
