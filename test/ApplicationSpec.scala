@@ -9,13 +9,13 @@ import play.api.test.Helpers._
  */
 class ApplicationSpec extends PlaySpec with OneAppPerTest {
 
-  // "Routes" should {
+   "Routes" should {
 
-  //   "send 404 on a bad request" in  {
-  //     route(app, FakeRequest(GET, "/boum")).map(status(_)) mustBe Some(NOT_FOUND)
-  //   }
+     "send 404 on a bad request" in  {
+       route(app, FakeRequest(GET, "/boum")).map(status(_)) mustBe Some(NOT_FOUND)
+     }
 
-  // }
+   }
 
   "HomeController" should {
 
@@ -28,15 +28,15 @@ class ApplicationSpec extends PlaySpec with OneAppPerTest {
     }
 
   }
+//  https://www.toptal.com/scala/concurrency-and-fault-tolerance-made-easy-an-intro-to-akka
+   "CountController" should {
 
-  // "CountController" should {
+     "return an increasing count" in {
+       contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "0"
+       contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "1"
+       contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "2"
+     }
 
-  //   "return an increasing count" in {
-  //     contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "0"
-  //     contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "1"
-  //     contentAsString(route(app, FakeRequest(GET, "/count")).get) mustBe "2"
-  //   }
-
-  // }
+   }
 
 }
