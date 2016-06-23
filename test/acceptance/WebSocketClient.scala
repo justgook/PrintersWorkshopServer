@@ -1,18 +1,20 @@
 package acceptance
 
-import akka.testkit.TestProbe
-import org.jboss.netty.bootstrap.ClientBootstrap
-import org.jboss.netty.channel._
-import socket.nio.NioClientSocketChannelFactory
-import java.util.concurrent.Executors
-import org.jboss.netty.handler.codec.http._
-import collection.JavaConversions._
-import websocketx._
 import java.net.{InetSocketAddress, URI}
 import java.nio.charset.Charset
-import org.jboss.netty.buffer.ChannelBuffers
-import org.jboss.netty.util.CharsetUtil
+import java.util.concurrent.Executors
+
 import akka.actor.ActorRef
+import akka.testkit.TestProbe
+import org.jboss.netty.bootstrap.ClientBootstrap
+import org.jboss.netty.buffer.ChannelBuffers
+import org.jboss.netty.channel._
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
+import org.jboss.netty.handler.codec.http._
+import org.jboss.netty.handler.codec.http.websocketx._
+import org.jboss.netty.util.CharsetUtil
+
+import scala.collection.JavaConversions._
 
 /**
   * Created by Roman Potashow on 22.06.2016.
@@ -20,7 +22,9 @@ import akka.actor.ActorRef
 trait WebSocketClient {
 
   def url: URI
+
   def reader: WebSocketClient.FrameReader
+
   def handler: WebSocketClient.Handler
 
   def connect()
@@ -33,14 +37,14 @@ trait WebSocketClient {
 /**
   * Usage of the simple websocket client:
   * <pre>
-  *   WebSocketClient(new URI("ws://localhost:8080/thesocket")) {
-  *     case Connected(client) => println("Connection has been established to: " + client.url.toASCIIString)
-  *     case Disconnected(client, _) => println("The websocket to " + client.url.toASCIIString + " disconnected.")
-  *     case TextMessage(client, message) => {
-  *       println("RECV: " + message)
-  *       client send ("ECHO: " + message)
-  *     }
-  *   }
+  * WebSocketClient(new URI("ws://localhost:8080/thesocket")) {
+  * case Connected(client) => println("Connection has been established to: " + client.url.toASCIIString)
+  * case Disconnected(client, _) => println("The websocket to " + client.url.toASCIIString + " disconnected.")
+  * case TextMessage(client, message) => {
+  * println("RECV: " + message)
+  * client send ("ECHO: " + message)
+  * }
+  * }
   * </pre>
   */
 object WebSocketClient {
@@ -62,7 +66,7 @@ object WebSocketClient {
 
   val defaultFrameReader = (_: WebSocketFrame) match {
     case f: TextWebSocketFrame => f.getText
-    case _ => throw new UnsupportedOperationException("Only single text frames are supported for now")
+    case _                     => throw new UnsupportedOperationException("Only single text frames are supported for now")
   }
 
   def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
@@ -83,6 +87,7 @@ object WebSocketClient {
   private class WebSocketClientHandler(handshaker: WebSocketClientHandshaker, client: WebSocketClient) extends SimpleChannelUpstreamHandler {
 
     import Messages._
+
     override def channelClosed(ctx: ChannelHandlerContext, e: ChannelStateEvent) {
       client.handler(Disconnected())
     }
@@ -92,14 +97,14 @@ object WebSocketClient {
         case resp: HttpResponse if handshaker.isHandshakeComplete =>
           throw new WebSocketException("Unexpected HttpResponse (status=" + resp.getStatus + ", content="
             + resp.getContent.toString(CharsetUtil.UTF_8) + ")")
-        case resp: HttpResponse =>
+        case resp: HttpResponse                                   =>
           handshaker.finishHandshake(ctx.getChannel, e.getMessage.asInstanceOf[HttpResponse])
           client.handler(Connected)
 
-        case f: TextWebSocketFrame =>
+        case f: TextWebSocketFrame  =>
           println("<< " + f.getText)
           client.handler(TextMessage(f.getText))
-        case _: PongWebSocketFrame =>
+        case _: PongWebSocketFrame  =>
         case _: CloseWebSocketFrame => ctx.getChannel.close()
       }
     }
@@ -112,26 +117,27 @@ object WebSocketClient {
 
   }
   private class DefaultWebSocketClient(
-    val url: URI,
-    version: WebSocketVersion,
-    private[this] val _handler: Handler,
-    val reader: FrameReader = defaultFrameReader) extends WebSocketClient {
+                                        val url: URI,
+                                        version: WebSocketVersion,
+                                        private[this] val _handler: Handler,
+                                        val reader: FrameReader = defaultFrameReader) extends WebSocketClient {
 
     val normalized = url.normalize()
-    val tgt = if (normalized.getPath == null || normalized.getPath.trim().isEmpty) {
-      new URI(normalized.getScheme, normalized.getAuthority,"/", normalized.getQuery, normalized.getFragment)
+    val tgt        = if (normalized.getPath == null || normalized.getPath.trim().isEmpty) {
+      new URI(normalized.getScheme, normalized.getAuthority, "/", normalized.getQuery, normalized.getFragment)
     } else normalized
 
-    val bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool, Executors.newCachedThreadPool))
-    val handshaker = new WebSocketClientHandshakerFactory().newHandshaker(tgt, version, null, false, Map.empty[String, String])
-    val self = this
+    val bootstrap        = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool, Executors.newCachedThreadPool))
+    val handshaker       = new WebSocketClientHandshakerFactory().newHandshaker(tgt, version, null, false, Map.empty[String, String])
+    val self             = this
     var channel: Channel = _
 
     import Messages._
+
     val handler = _handler orElse defaultHandler
 
     private def defaultHandler: Handler = {
-      case Error(ex) => ex.printStackTrace()
+      case Error(ex)                 => ex.printStackTrace()
       case _: WebSocketClientMessage =>
     }
 
@@ -151,11 +157,14 @@ object WebSocketClient {
     })
 
     import WebSocketClient.Messages._
+
     def connect() = {
       if (channel == null || !channel.isConnected) {
         val listener = futureListener { future =>
           if (future.isSuccess) {
-            synchronized { channel = future.getChannel }
+            synchronized {
+              channel = future.getChannel
+            }
             handshaker.handshake(channel)
           } else {
             handler(ConnectionFailed(Option(future.getCause)))
@@ -185,7 +194,9 @@ object WebSocketClient {
     }
 
     def futureListener(handleWith: ChannelFuture => Unit) = new ChannelFutureListener {
-      def operationComplete(future: ChannelFuture) {handleWith(future)}
+      def operationComplete(future: ChannelFuture) {
+        handleWith(future)
+      }
     }
   }
 
@@ -200,7 +211,7 @@ object WebSocketClient {
     protected override def isContentAlwaysEmpty(msg: HttpMessage) = {
       msg match {
         case res: HttpResponse => codes contains res.getStatus.getCode
-        case _ => false
+        case _                 => false
       }
     }
   }
@@ -210,7 +221,7 @@ object WebSocketClient {
     *
     * Copied from https://github.com/cgbystrom/netty-tools
     */
-  class WebSocketException(s: String,  th: Throwable) extends java.io.IOException(s, th) {
+  class WebSocketException(s: String, th: Throwable) extends java.io.IOException(s, th) {
     def this(s: String) = this(s, null)
   }
 

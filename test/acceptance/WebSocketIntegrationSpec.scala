@@ -27,8 +27,13 @@ class WebSocketIntegrationSpec
       probe.expectMsg(Connecting)
       probe.expectMsg(Connected)
 
+
       socket.send("""{"type":"ping"}""")
-      probe.expectMsg(TextMessage("""{"type":"pong"}"""))
+      probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
+        case TextMessage("""{"type":"pong"}""") => true
+        case _                                  => false
+      }
+      //      probe.expectMsg(TextMessage("""{"type":"pong"}"""))
 
       socket.disconnect()
       probe.expectMsg(Disconnecting)
@@ -37,7 +42,7 @@ class WebSocketIntegrationSpec
   }
 
   trait TestScope {
-    val probe = TestProbe()
+    val probe  = TestProbe()
     val socket = WebSocketClient(new URI(s"ws://localhost:$port/socket"), probe)
   }
 

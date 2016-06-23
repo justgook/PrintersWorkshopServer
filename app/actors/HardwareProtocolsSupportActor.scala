@@ -6,6 +6,7 @@ import akka.actor.{Actor, ActorRef, Props, Terminated}
 import akka.routing.{BroadcastRoutingLogic, Router}
 import play.api.Logger
 import play.api.libs.functional.syntax._
+import play.api.libs.json._
 
 /**
   * Created by Roman Potashow on 20.06.2016.
@@ -18,7 +19,7 @@ class HardwareProtocolsSupportActor extends Actor {
     router.route(m, self)
   }
 
-  import HardwareProtocolsSupportActor._
+  //  import HardwareProtocolsSupportActor._
 
 
   def receive = {
@@ -28,29 +29,26 @@ class HardwareProtocolsSupportActor extends Actor {
       router = router.removeRoutee(client)
       router = router.addRoutee(client)
 
-      client ! ClientConnectionActor.Command.ProtocolsUpdate(
-        Seq(
-          Protocol(
-            name = "312312",
-            label = "12312",
-            properties = Seq(
-              ProtocolProperty(name = "123", _type = "d", enum = Some("1231231"), label = "12", defaultValue = "321"),
-              ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-              ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-              ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-              ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-              ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321")
-            ))))
+
+    //      client ! List(
+    //        Protocol(
+    //          name = "312312",
+    //          label = "12312",
+    //          properties = Seq(
+    //            ProtocolProperty(name = "123", _type = "d", enum = Some("1231231"), label = "12", defaultValue = "321"),
+    //            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+    //            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+    //            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+    //            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+    //            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321")
+    //          )))
     case Terminated(subscriber) =>
       router = router.removeRoutee(subscriber)
   }
 }
 
 
-
 object HardwareProtocolsSupportActor {
-
-
 
 
   /*
@@ -62,8 +60,6 @@ object HardwareProtocolsSupportActor {
     import ProtocolPropertyType._
     case class ProtocolProperty(name: String, _type: ProtocolPropertyType, label: String, defaultValue: String)
     */
-
-  import play.api.libs.json._
 
 
   //  implicit val ProtocolPropertyFormat = Json.format[ProtocolProperty]
@@ -77,19 +73,11 @@ object HardwareProtocolsSupportActor {
     ) (ProtocolProperty.apply, unlift(ProtocolProperty.unapply))
 
   implicit val ProtocolFormat = Json.format[Protocol]
-
+  //Reads.enumNameReads(Gender)
   case class ProtocolProperty(name: String, _type: String, label: String, defaultValue: String, enum: Option[String] = None)
 
   case class Protocol(name: String, label: String, properties: Seq[ProtocolProperty])
 
-//  sealed trait Command
-//
-//  object Command {
-//
-//    case class Register(client: ActorRef) extends Command
-//
-//    //    case class Broadcast(msg: Any) extends Command
-//  }
 
   def props: Props = Props[HardwareProtocolsSupportActor]
 
