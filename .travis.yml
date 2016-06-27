@@ -1,7 +1,17 @@
+sudo: false
 language: scala
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot/
 jdk:
   - oraclejdk8
 scala:
-   - 2.11.8
-script: "sbt clean coverage test"
+  - 2.11.8
+script:
+  # Tricks to avoid unnecessary cache updates
+  - find $HOME/.sbt -name "*.lock" | xargs rm
+  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+  - "sbt clean coverage test"
 after_success: "sbt coverageReport coveralls"
