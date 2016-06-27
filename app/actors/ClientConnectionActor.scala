@@ -45,7 +45,8 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withConnections(c).withIncrementPatch()
       out ! patchState(state, newState)
       state = newState
-    case _                            => Logger.warn(s"ClientConnectionActor got unknown message from ${sender()}")
+    case _ => Logger.warn(s"ClientConnectionActor got unknown message from ${sender()}")
+
   }
 }
 
