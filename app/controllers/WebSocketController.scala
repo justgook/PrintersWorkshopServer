@@ -4,22 +4,23 @@ import javax.inject._
 
 import actors.ClientConnectionActor.Formats._
 import actors.ClientConnectionActor._
-import actors.{ClientConnectionActor, ConnectionRegistryActor, HardwareProtocolsSupportActor}
+import actors.{ClientConnectionActor, ConnectionRegistryActor, PrintersActor, ProtocolSettingsActor}
 import akka.actor._
 import akka.stream._
 import play.api.libs.streams._
 import play.api.mvc._
 
-//based on https://www.playframework.com/documentation/2.5.x/ScalaWebSockets#WebSockets
-class WebSocketController @Inject()(implicit system: ActorSystem, m: Materializer) {
 
-  val connectionRegistry       = system.actorOf(ConnectionRegistryActor.props, "ws-connection-registry")
-  val hardwareProtocolsSupport = system.actorOf(HardwareProtocolsSupportActor.props, "hardware-protocols-support")
+class WebSocketController @Inject()(implicit system: ActorSystem, m: Materializer) {
+  //TODO move those to some service - they must start with application not first WS connection
+  val connectionRegistry = system.actorOf(ConnectionRegistryActor.props, "ws-connection-registry")
+  val protocolSettings   = system.actorOf(ProtocolSettingsActor.props, "protocol-settings")
+  val printers           = system.actorOf(PrintersActor.props, "printers")
 
   //TODO add IncomingMessage parser
   def socket = WebSocket.accept[In, Out] { request =>
     ActorFlow actorRef { out =>
-      ClientConnectionActor.props(out, connectionRegistry, hardwareProtocolsSupport)
+      ClientConnectionActor.props(out, connectionRegistry, protocolSettings, printers)
     }
   }
 

@@ -22,22 +22,27 @@ class WebSocketIntegrationSpec
   override def afterAll = TestKit.shutdownActorSystem(system)
 
   "WebSocket" must {
-    "connect to /socket" in new TestScope {
+    "connect to /socket and receive pong " in new TestScope {
       socket.connect()
       probe.expectMsg(Connecting)
       probe.expectMsg(Connected)
-
-
       socket.send("""{"type":"ping"}""")
       probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
         case TextMessage("""{"type":"pong"}""") => true
         case _                                  => false
       }
-      //      probe.expectMsg(TextMessage("""{"type":"pong"}"""))
-
       socket.disconnect()
       probe.expectMsg(Disconnecting)
       probe.expectMsg(Disconnected(None))
+    }
+
+    "get initial state, as `set` command" in new TestScope {
+      socket.connect()
+      probe.fishForMessage(hint = "pong not received") {
+        case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
+        case _                                                        => false
+      }
+      socket.disconnect()
     }
   }
 

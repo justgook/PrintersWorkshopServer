@@ -5,7 +5,7 @@ import akka.routing.{BroadcastRoutingLogic, Router}
 
 class ConnectionRegistryActor extends Actor with ActorLogging {
 
-
+  import ConnectionRegistryActor._
   private var router = Router(BroadcastRoutingLogic())
 
   override def receive = {
@@ -14,18 +14,15 @@ class ConnectionRegistryActor extends Actor with ActorLogging {
       context watch client
       router = router.removeRoutee(client)
       router = router.addRoutee(client)
-      router.route(router.routees.size, self)
+      router.route(ConnectionCountUpdate(router.routees.size), self)
 
     case Terminated(client) =>
       router = router.removeRoutee(client)
-      router.route(router.routees.size, self)
-
-
+      router.route(ConnectionCountUpdate(router.routees.size), self)
   }
 }
 
 object ConnectionRegistryActor {
-
   def props: Props = Props[ConnectionRegistryActor]
-
+  case class ConnectionCountUpdate(count: Int)
 }
