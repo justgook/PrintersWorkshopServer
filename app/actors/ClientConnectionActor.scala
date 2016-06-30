@@ -31,21 +31,20 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
   out ! Set(state)
 
   def receive = {
-    case Ping       => out ! Pong
-    case Reset      => out ! Set(state)
-    case Unknown(t) => out ! Fail(s"Unknown type $t")
-    //    case PrintersListUpdate(list)     => Logger.info(s"ClientConnectionActor receive PrintersListUpdate $list")
+    case Ping                         => out ! Pong
+    case Reset                        => out ! Set(state)
+    case Unknown(t)                   => out ! Fail(s"Unknown type $t")
     case ProtocolSettingsUpdate(list) =>
       val newState = state.withProtocols(list).withIncrementPatch()
-      out ! patchState(state, newState)
+      out ! Patch(state, newState)
       state = newState
     case ConnectionCountUpdate(c)     =>
       val newState = state.withConnections(c).withIncrementPatch()
-      out ! patchState(state, newState)
+      out ! Patch(state, newState)
       state = newState
     case PrintersList(p)              =>
       val newState = state.withPrinters(p).withIncrementPatch()
-      out ! patchState(state, newState)
+      out ! Patch(state, newState)
       state = newState
     case msg                          => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
@@ -55,13 +54,6 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
 // Combinator syntax
 
 object ClientConnectionActor {
-
-  implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
-  implicit val stateWrites     = Json.writes[State]
-  implicit val stateReads      = Json.reads[State]
-
-  //TODO try move it to parser level
-  def patchState(old: State, update: State): Patch = Patch(JsonDiff.diff(old, update, remember = false))
 
   def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printers))
   sealed trait Message
@@ -80,7 +72,7 @@ object ClientConnectionActor {
   case class Unknown(msg: String) extends In
   case class Fail(error: String) extends Out
   case class Set(state: State) extends Out
-  case class Patch(patch: JsonPatch) extends Out
+  case class Patch(oldState: State, newState: State) extends Out
   case object Ping extends In
   case object Reset extends In
   case object Pong extends Out
@@ -88,6 +80,10 @@ object ClientConnectionActor {
 
   object Formats {
 
+
+    implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
+    implicit val stateWrites     = Json.writes[State]
+    implicit val stateReads      = Json.reads[State]
 
     // in
     implicit val updateReads = Json.reads[Update]
@@ -107,17 +103,18 @@ object ClientConnectionActor {
 
     // out
     implicit val failWrites  = Json.writes[Fail]
-    implicit val patchWrites = Json.writes[Patch]
     implicit val setWrites   = Json.writes[Set]
 
     implicit val outWrites = new Writes[Out] {
       override def writes(o: Out): JsValue = {
         def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
         val (t, args) = o match {
-          case error: Fail => ("fail", Some(write(error)))
-          case Pong        => ("pong", None)
-          case p: Patch    => ("patch", Some(write(p)))
-          case state: Set  => ("set", Some(write(state)))
+          case error: Fail               => ("fail", Some(write(error)))
+          case Pong                      => ("pong", None)
+          case Patch(oldState, newState) => ("patch", Some(write(
+            JsonDiff.diff(oldState, newState, remember = false)
+          )))
+          case Set(state)                => ("set", Some(write(state)))
         }
         Json.obj("type" -> t) ++ {
           args.map(args => Json.obj("args" -> args)) getOrElse Json.obj()
