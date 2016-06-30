@@ -15,7 +15,7 @@ class WebSocketController @Inject()(implicit system: ActorSystem, m: Materialize
   //TODO move those to some service - they must start with application not first WS connection
   val connectionRegistry = system.actorOf(ClientConnectionRegistryActor.props, "ws-connection-registry")
   val protocolSettings   = system.actorOf(ProtocolSettingsActor.props, "protocol-settings")
-  val printers           = system.actorOf(PrinterRegistryActor.props, "printers")
+  val printers           = system.actorOf(PrinterRegistryActor.props, "printers-registry")
 
   //TODO add IncomingMessage parser
   def socket = WebSocket.accept[In, Out] { request =>

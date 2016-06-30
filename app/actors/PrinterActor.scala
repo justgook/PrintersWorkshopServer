@@ -1,6 +1,7 @@
 package actors
 
 
+import actors.PrinterRegistryActor.{Settings => PrinterSettings}
 import akka.actor.{Actor, ActorLogging, Props}
 import play.api.Logger
 import play.api.libs.json.Json
@@ -9,41 +10,34 @@ import play.api.libs.json.Json
   * Created by Roman Potashow on 26.06.2016.
   */
 //TODO maybe it should not be an Actor - it must hold Ref to actors
-class PrinterActor(name: String) extends Actor with ActorLogging {
+class PrinterActor(settings: PrinterSettings) extends Actor with ActorLogging {
 
   import actors.PrinterActor._
 
-  var state = State(settings = Settings(name = name))
-  Logger.info(s"printer $state")
-  context.parent ! PrinterStateUpdate(state)
+  var status = Status()
+  //  var settings = PrinterSettings()
+  Logger.info(s"Created new Printer $status")
+  context.parent ! PrinterStateUpdate(status)
 
   def receive = {
-    case _ => Logger.info("not implemented")
+    case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
 object PrinterActor {
-  //  def props: Props = Props[Printer]
-  def props(name: String): Props = Props(new PrinterActor(name))
 
+  implicit val ProgressFormat    = Json.format[Progress]
+  implicit val TemperatureFormat = Json.format[Temperature]
+  implicit val StatusFormat      = Json.format[Status]
+
+  def props(settings: PrinterSettings): Props = Props(new PrinterActor(settings))
   sealed trait Message
-  case class PrinterStateUpdate(state: State) extends Message
-
-  case class State(settings: Settings = Settings(), status: Status = Status())
+  case class PrinterStateUpdate(status: Status) extends Message
+  //State definition
   case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature()))
   case class Progress(done: Int, of: Int)
   case class Temperature(name: String = "unknown", data: List[Int] = List())
-  case class Settings(name: String = "unknown", protocol: Protocol = Protocol())
-  case class Protocol(name: String = "none", properties: Option[Map[String, String]] = None)
 
-  object Formats {
-    implicit val ProgressFormat    = Json.format[Progress]
-    implicit val TemperatureFormat = Json.format[Temperature]
-    implicit val ProtocolFormat    = Json.format[Protocol]
-    implicit val SettingsFormat    = Json.format[Settings]
-    implicit val StatusFormat      = Json.format[Status]
-    implicit val StateFormat       = Json.format[State]
-  }
   /*
     {
       id: "001",
