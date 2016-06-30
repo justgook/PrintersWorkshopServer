@@ -4,8 +4,8 @@ package actors
   * Created by Roman Potashow on 17.06.2016.
   */
 
-import actors.ConnectionRegistryActor.ConnectionCountUpdate
-import actors.PrintersActor.PrintersListUpdate
+import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
+import actors.PrinterRegistryActor.PrintersListUpdate
 import actors.ProtocolSettingsActor.{Protocol, ProtocolSettingsUpdate}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import gnieh.diffson.playJson._
@@ -23,9 +23,9 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
   private var state = State()
 
   override def preStart: Unit = {
-    connectionRegistry ! self
-    protocolSettings ! self
-    printers ! self
+    connectionRegistry ! Subscribers.Add(self)
+    protocolSettings ! Subscribers.Add(self)
+    printers ! Subscribers.Add(self)
   }
   out ! Set(state)
 
@@ -45,7 +45,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withConnections(c).withIncrementPatch()
       out ! patchState(state, newState)
       state = newState
-    case _ => Logger.warn(s"ClientConnectionActor got unknown message from ${sender()}")
+    case _                            => Logger.warn(s"${self.path.name} got unknown message from ${sender()}")
 
   }
 }

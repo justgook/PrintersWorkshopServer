@@ -1,6 +1,6 @@
 package actors
 
-import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.routing.{BroadcastRoutingLogic, Router}
 import play.api.Logger
 import play.api.libs.functional.syntax._
@@ -11,32 +11,30 @@ import play.api.libs.json._
   */
 
 //TODO rename to PrinterTransportSetting
-class ProtocolSettingsActor extends Actor {
-
-  var router = Router(BroadcastRoutingLogic())
+class ProtocolSettingsActor extends Actor with ActorLogging with Subscribers {
 
   import ProtocolSettingsActor._
+  var router = Router(BroadcastRoutingLogic())
 
-  def receive = {
-    case client: ActorRef       =>
-      context watch client
-      Logger.debug(s"Registering: $client")
-      router = router.removeRoutee(client)
-      router = router.addRoutee(client)
-      client ! ProtocolSettingsUpdate(List(
-        Protocol(
-          name = "312312",
-          label = "12312",
-          properties = List(
-            ProtocolProperty(name = "123", _type = "d", enum = Some("1231231"), label = "12", defaultValue = "321"),
-            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
-            ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321")
-          ))))
-    case Terminated(subscriber) =>
-      router = router.removeRoutee(subscriber)
+  override def afterAdd(client: ActorRef): Unit = {
+    client ! ProtocolSettingsUpdate(List(
+      Protocol(
+        name = "312312",
+        label = "12312",
+        properties = List(
+          ProtocolProperty(name = "123", _type = "d", enum = Some("1231231"), label = "12", defaultValue = "321"),
+          ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+          ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+          ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+          ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321"),
+          ProtocolProperty(name = "123", _type = "d", label = "12", defaultValue = "321")
+        ))))
+  }
+
+  override def afterTerminated(subscriber: ActorRef): Unit = {}
+
+  def receive = withSubscribers {
+    case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
