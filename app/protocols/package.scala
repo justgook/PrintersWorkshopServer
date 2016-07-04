@@ -12,7 +12,7 @@ package object protocols {
 
   //TODO is that good solution to use ActorContext to create new connection ?
   def connect(config: Connection.Configuration, parent: ActorContext): ActorRef = config match {
-    case Connection.Configuration("serialport", args) =>
+    case Connection.Configuration("serialport", _) =>
       parent.actorOf(SerialPort.SerialPortConnectionActor.props(config = config))
     //    case msg => Logger.warn(s"connect(${this.getClass.getName}) unknown connection type '${config.name}'");
   }

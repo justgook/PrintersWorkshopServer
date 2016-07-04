@@ -1,5 +1,6 @@
 package protocols
 
+
 import akka.actor.{Actor, ActorLogging}
 import play.api.libs.json.Json
 
@@ -11,6 +12,15 @@ trait Connection extends Actor with ActorLogging {
 }
 
 object Connection {
+
   implicit val configurationFormat = Json.format[Configuration]
+  implicit val ProgressFormat      = Json.format[Progress]
+  implicit val TemperatureFormat   = Json.format[Temperature]
+  implicit val StatusFormat        = Json.format[Status]
   case class Configuration(name: String = "none", properties: Option[Map[String, String]] = None)
+  //State definition
+  case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature()))
+  case class Progress(done: Int, of: Int)
+  case class Temperature(name: String = "unknown", data: List[Int] = List())
+
 }

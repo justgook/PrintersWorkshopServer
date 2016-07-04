@@ -13,5 +13,5 @@ trait Protocol {
 }
 
 object Protocol {
-  case class SettingsUpdate(list: List[Settings])
+  case class SettingsList(list: List[Settings])
 }
