@@ -32,7 +32,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
   def receive = withSubscribers {
     case PrinterDescription(name, None) => //Create new Printer From client or any other actor
-      val settings = PrinterDescription(name) //TODO is way to parse all that instance from case
+      val settings = PrinterDescription(name)
       lastId += 1
       printers += (lastId -> PrinterInstance(settings))
       Logger.info(s"CreatedPrinter $printers")
@@ -40,7 +40,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
     //      sender() ! PrinterDataList.fromMap(printers)
     //      sender() ! PrinterData(lastId, Some(settings))
     case PrinterDescription(name, Some(config)) => //Restore printer
-      val settings = PrinterDescription(name, Some(config)) //TODO is way to parse all that instance from case
+      val settings = PrinterDescription(name, Some(config))
       lastId += 1
       val ref = protocols.connect(config, context)
       connection2id += ref -> lastId
@@ -80,7 +80,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
       }
     case status: PrinterConnectionStatus       => //update Status form connection
       val ref = sender()
-      //TODO maybe there is better solution maybe destroy connection2id at all??
+      //TODO update connection2id to router with akka.routing.ConsistentHashingRoutingLogic
       connection2id.get(ref) match {
         case Some(id) => printers.get(id) match {
           case Some(printer) => printers += (id -> printer.withStatus(status))

@@ -38,6 +38,8 @@ class WebSocketIntegrationSpec
 
     "get initial state, as `set` command" in new TestScope {
       socket.connect()
+      probe.expectMsg(Connecting)
+      probe.expectMsg(Connected)
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
         case _                                                        => false
@@ -45,8 +47,40 @@ class WebSocketIntegrationSpec
       socket.disconnect()
     }
 
+    "get fail, if send not defined type-command" in new TestScope {
+      socket.connect()
+      probe.expectMsg(Connecting)
+      probe.expectMsg(Connected)
+      probe.fishForMessage(hint = "pong not received") {
+        case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
+        case _                                                        => false
+      }
+      socket.send("""{"type":"undefined-command"}""")
+      probe.fishForMessage(/*max = 100.millis,*/ hint = "fail not received") {
+        case TextMessage(str) if str.startsWith( """{"type":"fail"""") => true
+        case _                                                         => false
+      }
+      socket.disconnect()
+
+    }
+
+    "close connection, if send not json (or wrong formatted)" in new TestScope {
+      socket.connect()
+      probe.expectMsg(Connecting)
+      probe.expectMsg(Connected)
+
+      socket.send("""not json """)
+      probe.fishForMessage(/*max = 100.millis,*/ hint = "fail not received") {
+        case Disconnected(error) => true
+        case _                   => false
+      }
+      socket.disconnect()
+    }
+
     "get full state, as `set` command after sending `reset`" in new TestScope {
       socket.connect()
+      probe.expectMsg(Connecting)
+      probe.expectMsg(Connected)
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
         case _                                                        => false
