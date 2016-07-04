@@ -6,13 +6,14 @@ package actors
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
 import actors.PrinterRegistryActor.{Printer, PrintersList}
-import actors.ProtocolSettingsActor.{Protocol, ProtocolSettingsUpdate}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import gnieh.diffson.playJson._
 import play.api.Logger
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
+import protocols.Protocol.SettingsUpdate
+import protocols.{Settings => ProtocolSettings}
 
 
 class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
@@ -31,22 +32,22 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
   out ! Set(state)
 
   def receive = {
-    case Ping                         => out ! Pong
-    case Reset                        => out ! Set(state)
-    case Unknown(t)                   => out ! Fail(s"Unknown type $t")
-    case ProtocolSettingsUpdate(list) =>
+    case Ping                     => out ! Pong
+    case Reset                    => out ! Set(state)
+    case Unknown(t)               => out ! Fail(s"Unknown type $t")
+    case SettingsUpdate(list)     =>
       val newState = state.withProtocols(list).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case ConnectionCountUpdate(c)     =>
+    case ConnectionCountUpdate(c) =>
       val newState = state.withConnections(c).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case PrintersList(p)              =>
+    case PrintersList(p)          =>
       val newState = state.withPrinters(p).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case msg                          => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg                      => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
@@ -59,8 +60,8 @@ object ClientConnectionActor {
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
-  case class State(patch: Int = 0, connections: Int = 0, protocols: Option[List[Protocol]] = None, printers: Option[List[Printer]] = None) {
-    def withProtocols(p: List[Protocol]) = copy(protocols = Some(p))
+  case class State(patch: Int = 0, connections: Int = 0, protocols: Option[List[ProtocolSettings]] = None, printers: Option[List[Printer]] = None) {
+    def withProtocols(p: List[ProtocolSettings]) = copy(protocols = Some(p))
 
     def withPrinters(p: List[Printer]) = copy(printers = Some(p))
 
@@ -102,8 +103,8 @@ object ClientConnectionActor {
 
 
     // out
-    implicit val failWrites  = Json.writes[Fail]
-    implicit val setWrites   = Json.writes[Set]
+    implicit val failWrites = Json.writes[Fail]
+    implicit val setWrites  = Json.writes[Set]
 
     implicit val outWrites = new Writes[Out] {
       override def writes(o: Out): JsValue = {

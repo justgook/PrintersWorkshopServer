@@ -1,7 +1,7 @@
 package actors
 
 
-import actors.PrinterRegistryActor.{Settings => PrinterSettings}
+import actors.PrinterRegistryActor.{PrinterDescription => PrinterSettings}
 import akka.actor.{Actor, ActorLogging, Props}
 import play.api.Logger
 import play.api.libs.json.Json
@@ -9,7 +9,8 @@ import play.api.libs.json.Json
 /**
   * Created by Roman Potashow on 26.06.2016.
   */
-//TODO maybe it should not be an Actor - it must hold Ref to actors
+//TODO maybe it should not be an Actor - it must hold Ref to connection actor
+//TOTO btw do i need that class at all ?
 class PrinterActor(settings: PrinterSettings) extends Actor with ActorLogging {
 
   import actors.PrinterActor._
@@ -33,6 +34,7 @@ object PrinterActor {
   def props(settings: PrinterSettings): Props = Props(new PrinterActor(settings))
   sealed trait Message
   case class PrinterStateUpdate(status: Status) extends Message
+
   //State definition
   case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature()))
   case class Progress(done: Int, of: Int)

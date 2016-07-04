@@ -44,6 +44,21 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+
+    "get full state, as `set` command after sending `reset`" in new TestScope {
+      socket.connect()
+      probe.fishForMessage(hint = "pong not received") {
+        case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
+        case _                                                        => false
+      }
+      socket.send("""{"type":"reset"}""")
+      probe.fishForMessage(hint = "pong not received") {
+        case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
+        case _                                                        => false
+      }
+      socket.disconnect()
+    }
+
   }
 
   trait TestScope {
