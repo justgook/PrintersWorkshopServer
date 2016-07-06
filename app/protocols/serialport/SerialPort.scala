@@ -3,7 +3,7 @@ package protocols.serialport
 import actors.PrinterRegistryActor.PrinterData
 import akka.actor.Props
 import play.api.Logger
-import protocols.Settings.SelectStringProperty
+import protocols.Property._
 import protocols.{Connection, Protocol, Settings}
 
 /**
@@ -13,7 +13,7 @@ import protocols.{Connection, Protocol, Settings}
 object SerialPort extends Protocol {
   val name     = "serialport"
   var settings = Settings(name = name, label = "Serial Port", properties = List(
-    SelectStringProperty(name = "port", label = "port", enum = List("COM1", "COM2", "COM3", "COM4"))
+    `select-string`(name = "port", label = "port", enum = List("COM1", "COM2", "COM3", "COM4"))
   ))
 
   class ConnectionActor(config: Connection.Configuration) extends Connection {

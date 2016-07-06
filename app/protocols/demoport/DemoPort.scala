@@ -3,7 +3,7 @@ package protocols.demoport
 import actors.PrinterRegistryActor.PrinterData
 import akka.actor.Props
 import play.api.Logger
-import protocols.Settings.{BoolProperty, IntProperty}
+import protocols.Property._
 import protocols.{Connection, Protocol, Settings}
 
 /**
@@ -13,8 +13,8 @@ import protocols.{Connection, Protocol, Settings}
 object DemoPort extends Protocol {
   val name     = "demoport"
   var settings = Settings(name = name, label = "Demo Connection", properties = List(
-    BoolProperty(name = "sdCard", label = "Have SD card", defaultValue = false),
-    IntProperty(name = "defaultSpeed", label = "Printing Speed", defaultValue = 10)
+    `bool`(name = "sdCard", label = "Have SD card", defaultValue = false),
+    `int`(name = "defaultSpeed", label = "Printing Speed", defaultValue = 10)
   ))
 
   class ConnectionActor(config: Connection.Configuration) extends Connection {
