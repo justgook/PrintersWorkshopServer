@@ -23,7 +23,8 @@ class WebSocketStateActor(handle: TestProbe) extends Actor {
           val patch = JsonPatch.parse(s"${(json \ "args").as[JsArray]}")
           state = patch(state).as[JsObject]
           handle.ref ! state
-        case t       => println(s"WebSocketStateActor got unknown type  - $t")
+        case t       =>
+          handle.ref ! TextMessage(str)
       }
     case msg              => handle.ref ! msg
 
@@ -31,9 +32,4 @@ class WebSocketStateActor(handle: TestProbe) extends Actor {
 }
 object WebSocketStateActor {
   def props(handle: TestProbe) = Props(new WebSocketStateActor(handle))
-
-  //  def props: Props = Props[WebSocketStateActor]
-
-  //  def apply()(implicit system: ActorSystem) = new WebSocketStateActor(system)
-  //  def apply(name: String)(implicit system: ActorSystem) = new WebSocketStateActor(system, name)
 }

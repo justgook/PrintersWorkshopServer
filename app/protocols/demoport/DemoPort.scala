@@ -3,7 +3,7 @@ package protocols.demoport
 import actors.PrinterRegistryActor.PrinterData
 import akka.actor.Props
 import play.api.Logger
-import protocols.Settings.{BoolProperty, IntProperty}
+import protocols.Settings.{BoolProperty, IntProperty, SelectStringProperty}
 import protocols.{Connection, Protocol, Settings}
 
 /**
@@ -14,6 +14,7 @@ object DemoPort extends Protocol {
   val name     = "demoport"
   var settings = Settings(name = name, label = "Demo Connection", properties = List(
     BoolProperty(name = "sdCard", label = "Have SD card", defaultValue = false),
+    SelectStringProperty(name = "select-test", label = "Testing Select", enum = List("1", "2", "3")),
     IntProperty(name = "defaultSpeed", label = "Printing Speed", defaultValue = 10)
   ))
 

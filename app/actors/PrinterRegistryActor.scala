@@ -53,7 +53,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
     //      sender() ! PrinterDataList.fromMap(printers)
     //      sender() ! PrinterData(lastId, Some(settings))
 
-    case PrinterData(id, Some(settings), None) => // Update configuration from Client
+    case PrinterData(Some(id), Some(settings), None) => // Update configuration from Client
       printers.get(id) match {
         case Some(printer) =>
           printers += (id -> printer.withDescription(settings))
@@ -82,7 +82,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
           }
         case _             => Logger.info(s"${self.path.name}(${this.getClass.getName}) printer with id $id not found")
       }
-    case status: PrinterConnectionStatus       => //update Status form connection
+    case status: PrinterConnectionStatus             => //update Status form connection
       val ref = sender()
       //TODO update connection2id to router with akka.routing.ConsistentHashingRoutingLogic
       connection2id.get(ref) match {
@@ -92,7 +92,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
         }
         case None     => Logger.warn(s"${self.path.name}(${this.getClass.getName}) no id for reference  $ref")
       }
-    case msg                                   => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg                                         => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
@@ -102,7 +102,7 @@ object PrinterRegistryActor {
   implicit val printerDataFormat        = Json.format[PrinterData]
 
   def props: Props = Props[PrinterRegistryActor]
-  case class PrinterData(id: Int, settings: Option[PrinterDescription], status: Option[PrinterConnectionStatus] = None)
+  case class PrinterData(id: Option[Int], settings: Option[PrinterDescription], status: Option[PrinterConnectionStatus] = None)
   case class PrinterDataList(printers: List[PrinterData])
   case class PrinterInstance(description: PrinterDescription,
                              connection: Option[ActorRef] = None,
@@ -116,8 +116,8 @@ object PrinterRegistryActor {
   object PrinterDataList {
     def fromMap(printers: Map[Int, PrinterInstance]): PrinterDataList = {
       val list = printers.map {
-        case (a, printer) =>
-          PrinterData(a, settings = Some(printer.description), status = printer.status)
+        case (id, printer) =>
+          PrinterData(Some(id), settings = Some(printer.description), status = printer.status)
       }(collection.breakOut): List[PrinterData]
       PrinterDataList(printers = list)
     }
