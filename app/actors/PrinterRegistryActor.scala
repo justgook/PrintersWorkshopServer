@@ -11,7 +11,6 @@ import protocols.Connection.{Configuration, Status => PrinterConnectionStatus}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-
 /**
   * Created by Roman Potashow on 26.06.2016.
   */
@@ -19,10 +18,11 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
   import actors.PrinterRegistryActor._
 
+
   //TODO add way to save and store on restart Application
 
   private var lastId                                   = 0
-  private var printers     : Map[Int, PrinterInstance] = Map()
+  private var printers     : Map[Int, PrinterInstance] = Map.empty
   //TODO update it to router with akka.routing.ConsistentHashingRoutingLogic
   private var connection2id: Map[ActorRef, Int]        = Map()
 
@@ -34,17 +34,21 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
     case PrinterDescription(name, None) => //Create new Printer From client or any other actor
       val settings = PrinterDescription(name)
       lastId += 1
-      printers += (lastId -> PrinterInstance(settings))
-      Logger.info(s"CreatedPrinter $printers")
+      val printer = lastId -> PrinterInstance(settings)
+      printers += printer
+      Logger.info(s"Printer Created $printer")
       subscribers.route(PrinterDataList.fromMap(printers), self)
     //      sender() ! PrinterDataList.fromMap(printers)
     //      sender() ! PrinterData(lastId, Some(settings))
-    case PrinterDescription(name, Some(config)) => //Restore printer
+
+    case PrinterDescription(name, Some(config)) => //Restore
       val settings = PrinterDescription(name, Some(config))
       lastId += 1
       val ref = protocols.connect(config, context)
       connection2id += ref -> lastId
-      printers += (lastId -> PrinterInstance(description = settings, connection = Some(ref)))
+      val printer = lastId -> PrinterInstance(description = settings, connection = Some(ref))
+      Logger.info(s"Restore $printers")
+      printers += printer
       subscribers.route(PrinterDataList.fromMap(printers), self)
     //      sender() ! PrinterDataList.fromMap(printers)
     //      sender() ! PrinterData(lastId, Some(settings))

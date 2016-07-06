@@ -17,7 +17,7 @@ object Connection {
   implicit val ProgressFormat      = Json.format[Progress]
   implicit val TemperatureFormat   = Json.format[Temperature]
   implicit val StatusFormat        = Json.format[Status]
-  case class Configuration(name: String = "none", properties: Option[Map[String, String]] = None)
+  case class Configuration(name: String = "none", properties: Map[String, String] = Map.empty)
   //State definition
   case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature()))
   case class Progress(done: Int, of: Int)

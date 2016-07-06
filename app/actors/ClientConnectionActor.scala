@@ -6,10 +6,12 @@ package actors
 
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
-import actors.PrinterRegistryActor.{PrinterData, PrinterDataList, PrinterDescription}
+import actors.PrinterRegistryActor.{PrinterData, PrinterDataList}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import gnieh.diffson.playJson._
 import play.api.Logger
+
+//import protocols.Connection.Configuration
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
@@ -28,9 +30,11 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     connectionRegistry ! Subscribers.Add(self)
     protocolSettings ! Subscribers.Add(self)
     printers ! Subscribers.Add(self)
-    printers ! PrinterDescription(name = "Kossel Mini Bugaga123412") // TODO remove me - it is just example of new printer creation
-    printers ! PrinterDescription(name = "4Kossel Mini Bugaga123412") // TODO remove me - it is just example of new printer creation
-    printers ! PrinterData(id = 1, Some(PrinterDescription(name = "Updated data")))
+    //    printers ! PrinterDescription(name = "Kossel Mini Bugaga123412") // TODO remove me - it is just example of new printer creation
+    //    printers ! PrinterDescription(name = "4Kossel Mini Bugaga123412") // TODO remove me - it is just example of new printer creation
+    //    printers ! PrinterData(id = 1, Some(PrinterDescription(name = "Updated data")))
+    //    //    printers ! PrinterData(id = 2, Some(PrinterDescription(name = "asdas", config = Some(Configuration(name = "demoport")))))
+    //    printers ! PrinterDescription(name = "asdas", config = Some(Configuration(name = "demoport")))
 
   }
 
@@ -54,11 +58,10 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       state = newState
 
     case printer: PrinterData =>
-      //TODO Find-out maybe there is faster way for that update ?
-      val printers = state.printers.getOrElse(List.empty).map({
-        case PrinterData(printer.id, settings, status) => printer // TODO Ask Gurus is it readable and can understand what the `printer` it is ?
-        case printer: PrinterData                      => printer
-      })
+      val printers = state.printers find (_.id == printer.id) match {
+        case None    => printer :: state.printers
+        case Some(p) => printer :: state.printers.dropWhile(_.id == printer.id)
+      }
       val newState = state.withPrinters(printers).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
@@ -81,10 +84,10 @@ object ClientConnectionActor {
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
-  case class State(patch: Int = 0, connections: Int = 0, protocols: Option[List[ProtocolSettings]] = None, printers: Option[List[PrinterData]] = None) extends Out {
-    def withProtocols(p: List[ProtocolSettings]) = copy(protocols = Some(p))
+  case class State(patch: Int = 0, connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: List[PrinterData] = List.empty) extends Out {
+    def withProtocols(p: List[ProtocolSettings]) = copy(protocols = p)
 
-    def withPrinters(p: List[PrinterData]) = copy(printers = Some(p))
+    def withPrinters(p: List[PrinterData]) = copy(printers = p)
 
     def withIncrementPatch() = copy(patch = patch + 1)
 

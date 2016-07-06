@@ -7,6 +7,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{TestKit, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import org.scalatestplus.play._
+import play.api.libs.json.JsObject
 
 
 /**
@@ -22,7 +23,7 @@ class WebSocketIntegrationSpec
   override def afterAll = TestKit.shutdownActorSystem(system)
 
   "WebSocket" must {
-    "connect to /socket and receive pong " in new TestScope {
+    "connect to /socket and receive pong " in new TestProbeScope {
       socket.connect()
       probe.expectMsg(Connecting)
       probe.expectMsg(Connected)
@@ -36,7 +37,7 @@ class WebSocketIntegrationSpec
       probe.expectMsg(Disconnected(None))
     }
 
-    "get initial state, as `set` command" in new TestScope {
+    "get initial state, as `set` command" in new TestProbeScope {
       socket.connect()
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
@@ -45,7 +46,7 @@ class WebSocketIntegrationSpec
       socket.disconnect()
     }
 
-    "get fail, if send not defined type-command" in new TestScope {
+    "get fail, if send not defined type-command" in new TestProbeScope {
       socket.connect()
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
@@ -60,7 +61,7 @@ class WebSocketIntegrationSpec
 
     }
 
-    "close connection, if send not json (or wrong formatted)" in new TestScope {
+    "close connection, if send not json (or wrong formatted)" in new TestProbeScope {
       socket.connect()
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
@@ -74,7 +75,7 @@ class WebSocketIntegrationSpec
       socket.disconnect()
     }
 
-    "get full state, as `set` command after sending `reset`" in new TestScope {
+    "get full state, as `set` command after sending `reset`" in new TestProbeScope {
       socket.connect()
       probe.fishForMessage(hint = "pong not received") {
         case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
@@ -88,11 +89,29 @@ class WebSocketIntegrationSpec
       socket.disconnect()
     }
 
+    "have state with connection count as 1" in new TestStateScope {
+      socket.connect()
+      probe.fishForMessage(hint = "state never had connection count 1") {
+        case JsObject(json) =>
+          json.get("connections") match {
+            case Some(connections) if connections.as[Int] == 1 => true
+            case Some(_) | None                                => false
+          }
+        case _              => false
+      }
+      socket.disconnect()
+    }
   }
 
-  trait TestScope {
+  trait TestProbeScope {
     val probe  = TestProbe()
     val socket = WebSocketClient(new URI(s"ws://localhost:$port/socket"), probe)
+  }
+
+  trait TestStateScope {
+    val probe            = TestProbe()
+    val stateParserActor = system.actorOf(WebSocketStateActor.props(probe))
+    val socket           = WebSocketClient(new URI(s"ws://localhost:$port/socket"), stateParserActor)
   }
 
 }
