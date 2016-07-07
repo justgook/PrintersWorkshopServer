@@ -28,7 +28,13 @@ sealed trait EnumProperty extends Property {
 }
 
 object Property {
-  implicit         val writes             = new Writes[Property] {
+  implicit val boolFormat         = Json.format[`bool`]
+  implicit val stringFormat       = Json.format[`string`]
+  implicit val intFormat          = Json.format[`int`]
+  implicit val selectStringFormat = Json.format[`select-string`]
+  implicit val selectIntFormat    = Json.format[`select-int`]
+
+  implicit val writes = new Writes[Property] {
     def write[X: Writes](x: X) = implicitly[Writes[X]].writes(x)
 
     override def writes(o: Property): JsValue = {
@@ -47,7 +53,7 @@ object Property {
       tpe ++ args
     }
   }
-  implicit         val reads              = new Reads[Property]() {
+  implicit val reads  = new Reads[Property]() {
     override def reads(json: JsValue): JsResult[Property] = {
       def read[X: Reads]: JsResult[X] = json.validate[X]
       (json \ "type").validate[String] flatMap {
@@ -62,11 +68,7 @@ object Property {
       }
     }
   }
-  private implicit val boolFormat         = Json.format[`bool`]
-  private implicit val stringFormat       = Json.format[`string`]
-  private implicit val intFormat          = Json.format[`int`]
-  private implicit val selectStringFormat = Json.format[`select-string`]
-  private implicit val selectIntFormat    = Json.format[`select-int`]
+
   case class `bool`(name: String, label: String, defaultValue: Boolean) extends Property {
     type T = Boolean
   }
