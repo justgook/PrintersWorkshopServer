@@ -31,60 +31,55 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
   }
 
   def receive = withSubscribers {
-    case PrinterDescription(name, None) => //Create new Printer From client or any other actor
-      val settings = PrinterDescription(name)
-      lastId += 1
-      val printer = lastId -> PrinterInstance(settings)
-      printers += printer
-      Logger.info(s"Printer Created $printer")
-      subscribers.route(PrinterDataList.fromMap(printers), self)
-    //      sender() ! PrinterDataList.fromMap(printers)
-    //      sender() ! PrinterData(lastId, Some(settings))
-
-    case PrinterDescription(name, Some(config)) => //Restore
-      val settings = PrinterDescription(name, Some(config))
-      lastId += 1
-      val ref = protocols.connect(config, context)
-      connection2id += ref -> lastId
-      val printer = lastId -> PrinterInstance(description = settings, connection = Some(ref))
-      Logger.info(s"Restore $printers")
-      printers += printer
-      subscribers.route(PrinterDataList.fromMap(printers), self)
-    //      sender() ! PrinterDataList.fromMap(printers)
-    //      sender() ! PrinterData(lastId, Some(settings))
-
-    case PrinterData(Some(id), Some(settings), None) => // Update configuration from Client
-      printers.get(id) match {
-        case Some(printer) =>
-          printers += (id -> printer.withDescription(settings))
-
-          (settings, printer.description.config) match {
-            case (PrinterDescription(name, Some(config)), Some(printerConfig)) if printerConfig != config =>
-              Logger.error(s"NEED IMPLEMENT RECONNECT with new $config")
-            case (PrinterDescription(name, Some(config)), None)                                           =>
-              Logger.error(s"NEED IMPLEMENT CONNECT with new $config")
-            case (PrinterDescription(name, Some(config)), Some(printerConfig)) if printerConfig == config =>
-              Logger.error("IF configs is same no need to reconnect! maybe just ignore that case")
-            case (PrinterDescription(name, None), printerConfig)                                          =>
-              Logger.info("Just Update Name")
+    case PrinterDataList(list) =>
+      list map {
+        //maybe there is better way how find updates Diff from incomming and current state
+        case PrinterData(None, Some(settings), _) => //Create new printer
+          lastId += 1
+          val printer = lastId -> PrinterInstance(settings)
+          printers += printer
+          Logger.info(s"Printer Created $printer")
+          settings.config match {
+            case Some(config) => Logger.error("NEED IMPLEMENT Connect n printer creation")
+            case None         =>
           }
+          subscribers.route(PrinterDataList.fromMap(printers), self)
 
-          printer.connection match {
-            case Some(connection) =>
-              implicit val timeout = Timeout(1.seconds)
-              //TODO replace with real message
-              val future = connection ? "hello"
-              val status = Await.result(future, timeout.duration).asInstanceOf[PrinterConnectionStatus]
-              printers += (id -> printer.withStatus(status))
-              subscribers.route(PrinterDataList.fromMap(printers), self)
-            case None             =>
-              subscribers.route(PrinterDataList.fromMap(printers), self)
+        case PrinterData(Some(id), Some(settings), _) => //Update Printer printer
+          printers.get(id) match {
+            case None          => Logger.warn(s"Printer with id $id not found")
+            case Some(printer) =>
+              //              Logger.error(s"NEED IMPLEMENT Printer Settings update $settings")
+              (settings, printer.description.config) match {
+                case (PrinterDescription(name, Some(config)), Some(printerConfig))
+                  if printerConfig != config                         =>
+                  Logger.error(s"NEED IMPLEMENT RECONNECT with new $config")
+                  printer.connection match {
+                    case Some(connection) =>
+                      implicit val timeout = Timeout(1.seconds)
+                      //TODO replace with real message
+                      val future = connection ? "hello"
+                      val status = Await.result(future, timeout.duration).asInstanceOf[PrinterConnectionStatus]
+                      printers += (id -> printer.withStatus(status))
+                      subscribers.route(PrinterDataList.fromMap(printers), self)
+                    case None             =>
+                      subscribers.route(PrinterDataList.fromMap(printers), self)
+                  }
+                case (PrinterDescription(name, Some(config)), None)  =>
+                  Logger.error(s"NEED IMPLEMENT CONNECT with new $config")
+                case (PrinterDescription(name, Some(config)), Some(printerConfig))
+                  if printerConfig == config                         =>
+                  Logger.error("IF configs is same no need to reconnect! maybe just ignore that case")
+                case (PrinterDescription(name, None), printerConfig) =>
+                  Logger.info("Just Update Name")
+              }
+
           }
-        case _             => Logger.info(s"${self.path.name}(${this.getClass.getName}) printer with id $id not found")
+        case _                                        => ""
       }
-    case status: PrinterConnectionStatus             => //update Status form connection
+
+    case status: PrinterConnectionStatus => //update Status form connection
       val ref = sender()
-      //TODO update connection2id to router with akka.routing.ConsistentHashingRoutingLogic
       connection2id.get(ref) match {
         case Some(id) => printers.get(id) match {
           case Some(printer) => printers += (id -> printer.withStatus(status))
@@ -92,7 +87,7 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
         }
         case None     => Logger.warn(s"${self.path.name}(${this.getClass.getName}) no id for reference  $ref")
       }
-    case msg                                         => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg                             => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 

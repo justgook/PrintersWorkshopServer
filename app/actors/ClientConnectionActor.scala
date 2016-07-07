@@ -36,7 +36,13 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     case Ping                     => out ! Pong
     case Reset                    => out ! SetState(state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
     case Unknown(t)               => out ! Fail(s"Unknown type $t")
-    case Update(patch)            => Logger.info(s"ClientConnectionActor Update received, ${state.withPatch(patch)} ")
+    case Update(patch)            =>
+      (state.withPatch(patch), state) match {
+        case (State(_, _, _, newPrinters), State(_, _, _, oldPrinters)) // Printer update from Client
+          if newPrinters != oldPrinters => printers ! PrinterDataList(newPrinters)
+        case _                          =>
+      }
+      Logger.info(s"ClientConnectionActor Update received, ${state.withPatch(patch)} ")
     case SettingsList(list)       =>
       val newState = state.withProtocols(list).withIncrementPatch()
       out ! Patch(state, newState)
@@ -45,6 +51,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withConnections(c).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
+
     case PrinterDataList(p)       =>
       val newState = state.withPrinters(p).withIncrementPatch()
       out ! Patch(state, newState)
