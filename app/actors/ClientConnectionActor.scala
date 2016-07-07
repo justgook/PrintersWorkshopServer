@@ -15,6 +15,7 @@ import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
 import protocols.Protocol.SettingsList
 import protocols.{Settings => ProtocolSettings}
+import protocols.JsonFormats.SettingsJson._
 
 
 class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
