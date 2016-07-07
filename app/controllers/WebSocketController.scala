@@ -2,7 +2,6 @@ package controllers
 
 import javax.inject._
 
-import actors.ClientConnectionActor.Formats._
 import actors.ClientConnectionActor._
 import actors.{ClientConnectionActor, ClientConnectionRegistryActor, PrinterRegistryActor}
 import akka.actor._

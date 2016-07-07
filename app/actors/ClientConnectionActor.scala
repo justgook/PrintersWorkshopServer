@@ -15,7 +15,6 @@ import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
 import protocols.Protocol.SettingsList
 import protocols.{Settings => ProtocolSettings}
-import protocols.JsonFormats.SettingsJson._
 
 
 class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
@@ -37,7 +36,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     case Ping                     => out ! Pong
     case Reset                    => out ! SetState(state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
     case Unknown(t)               => out ! Fail(s"Unknown type $t")
-    case Update(patch)            => Logger.info(s"ClientConnectionActor Update received, ${Formats.patchUpdate(patch, state)} ")
+    case Update(patch)            => Logger.info(s"ClientConnectionActor Update received, ${state.withPatch(patch)} ")
     case SettingsList(list)       =>
       val newState = state.withProtocols(list).withIncrementPatch()
       out ! Patch(state, newState)
@@ -68,6 +67,9 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
 
 object ClientConnectionActor {
 
+  implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
+  implicit val stateFormat     = Json.format[State]
+
   def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printers))
 
   //TODO re-implement me in printer-list parsing from client for sending updates to the PrinterRegistry
@@ -76,6 +78,9 @@ object ClientConnectionActor {
     list1.filterNot(unwanted)
   }
 
+  def patchUpdate(patch: JsonPatch, oldState: State): State = {
+    patch(oldState)
+  }
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
@@ -87,26 +92,18 @@ object ClientConnectionActor {
     def withIncrementPatch() = copy(patch = patch + 1)
 
     def withConnections(c: Int) = copy(connections = c)
+
+    def withPatch(p: JsonPatch): State = p(this)
   }
   case class SetState(state: State) extends Out
   case class Update(patch: JsonPatch) extends In
   case class Unknown(msg: String) extends In
   case class Fail(error: String) extends Out
   case class Patch(oldState: State, newState: State) extends Out
-  case object Ping extends In
-  case object Reset extends In
-  case object Pong extends Out
-
-
-  object Formats {
-    implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
-    implicit val stateWrites     = Json.writes[State]
-    implicit val stateReads      = Json.reads[State]
-
-    // in
+  // in
+  object In {
     implicit val updateReads = Json.reads[Update]
-
-    implicit val inReads = new Reads[In]() {
+    implicit val inReads     = new Reads[In]() {
       override def reads(json: JsValue): JsResult[In] = {
         def read[T: Reads] = implicitly[Reads[T]].reads((json \ "args").get)
         (json \ "type").as[String] match {
@@ -117,12 +114,12 @@ object ClientConnectionActor {
         }
       }
     }
+  }
 
-
+  object Out {
     // out
     implicit val failWrites = Json.writes[Fail]
-
-    implicit val outWrites = new Writes[Out] {
+    implicit val outWrites  = new Writes[Out] {
       override def writes(o: Out): JsValue = {
         def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
         val (t, args) = o match {
@@ -138,11 +135,13 @@ object ClientConnectionActor {
         }
       }
     }
-    implicit val messageFlowTransformer = MessageFlowTransformer.jsonMessageFlowTransformer[In, Out]
-
-    def patchUpdate(patch: JsonPatch, oldState: State): State = {
-      patch(oldState)
-    }
-
   }
+  object Message {
+    implicit val messageFlowTransformer = MessageFlowTransformer.jsonMessageFlowTransformer[In, Out]
+  }
+  case object Ping extends In
+
+  case object Reset extends In
+
+  case object Pong extends Out
 }

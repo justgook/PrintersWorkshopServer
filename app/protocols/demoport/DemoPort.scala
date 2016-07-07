@@ -13,8 +13,11 @@ import protocols.{Connection, Protocol, Settings}
 object DemoPort extends Protocol {
   val name     = "demoport"
   var settings = Settings(name = name, label = "Demo Connection", properties = List(
-    `bool`(name = "sdCard", label = "Have SD card", defaultValue = false),
-    `int`(name = "defaultSpeed", label = "Printing Speed", defaultValue = 10)
+    `bool`(name = "demo-bool", label = "Switcher", defaultValue = false),
+    `int`(name = "demo-int", label = "Some Number", defaultValue = 10),
+    `select-int`(name = "demo-select-int", label = "Select Number", enum = List(1, 2, 3, 4, 5, 6, 7, 8, 9)),
+    `string`(name = "demo-string", label = "Enter Text Here", defaultValue = ""),
+    `select-string`(name = "demo-select-string", label = "Select letter", enum = List("a", "b"))
   ))
 
   class ConnectionActor(config: Connection.Configuration) extends Connection {
