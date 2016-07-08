@@ -7,6 +7,7 @@ scalaVersion := "2.11.8"
 //coverageEnabled := true
 coverageEnabled.in(Test, test) := true
 
+libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
 libraryDependencies ++= Seq(
   jdbc,

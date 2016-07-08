@@ -1,5 +1,4 @@
-GET / controllers.HomeController.index
+GET         /socket        controllers.Application.socket
+POST        /upload        controllers.Application.upload
 
-GET /socket controllers.WebSocketController.socket
-GET /count controllers.CountController.count
 
