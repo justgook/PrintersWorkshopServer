@@ -23,7 +23,6 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
   private var lastId                                   = 0
   private var printers     : Map[Int, PrinterInstance] = Map.empty
-  //TODO update it to router with akka.routing.ConsistentHashingRoutingLogic
   private var connection2id: Map[ActorRef, Int]        = Map()
 
   override def afterAdd(client: ActorRef): Unit = {

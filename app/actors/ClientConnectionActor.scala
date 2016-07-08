@@ -50,21 +50,11 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withConnections(c).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-
-    case PrinterDataList(p)       =>
+    case PrinterDataList(p) =>
       val newState = state.withPrinters(p).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-
-    case printer: PrinterData =>
-      val printers = state.printers find (_.id == printer.id) match {
-        case None    => printer :: state.printers
-        case Some(p) => printer :: state.printers.dropWhile(_.id == printer.id)
-      }
-      val newState = state.withPrinters(printers).withIncrementPatch()
-      out ! Patch(state, newState)
-      state = newState
-    case msg                  => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg                      => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
@@ -78,9 +68,6 @@ object ClientConnectionActor {
 
   def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printers))
 
-  def patchUpdate(patch: JsonPatch, oldState: State): State = {
-    patch(oldState)
-  }
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
