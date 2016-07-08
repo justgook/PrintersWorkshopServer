@@ -78,12 +78,6 @@ object ClientConnectionActor {
 
   def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printers))
 
-  //TODO re-implement me in printer-list parsing from client for sending updates to the PrinterRegistry
-  def getListDiff(list1: List[Any], list2: List[Any]) = {
-    val unwanted = list2.toSet
-    list1.filterNot(unwanted)
-  }
-
   def patchUpdate(patch: JsonPatch, oldState: State): State = {
     patch(oldState)
   }

@@ -10,8 +10,6 @@ package object protocols {
   // TODO change to Actor that will react on Settings changes and put that list inside it as tuples of Optional[Watcher] + Optional[Setting]
   var settings = List(DemoPort.settings)
 
-
-  //TODO is that good solution to use ActorContext to create new connection ?
   def connect(config: Connection.Configuration, context: ActorContext): ActorRef = config match {
     case Connection.Configuration("serialport", _) =>
       context.actorOf(SerialPort.ConnectionActor.props(config = config))

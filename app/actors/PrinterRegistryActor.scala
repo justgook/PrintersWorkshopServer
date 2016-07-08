@@ -33,39 +33,47 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
   def receive = withSubscribers {
     case PrinterDataList(list) =>
       list map {
-        //maybe there is better way how find updates Diff from incomming and current state
+        //TODO  Create cache for that part - and got only diff od it
+        //      def getListDiff(list1: List[Any], list2: List[Any]) = {
+        //        val unwanted = list2.toSet
+        //        list1.filterNot(unwanted)
+        //      }
         case PrinterData(None, Some(settings), _) => //Create new printer
           lastId += 1
-          val printer = lastId -> PrinterInstance(settings)
-          printers += printer
-          Logger.info(s"Printer Created $printer")
+          var printer = lastId -> PrinterInstance(settings)
           settings.config match {
-            case Some(config) => Logger.error("NEED IMPLEMENT Connect n printer creation")
+            case Some(config) =>
+              printer = lastId -> printer._2.withConnection(protocols.connect(config, context))
             case None         =>
           }
+          printers += printer
+          Logger.info(s"Printer Created $printer")
           subscribers.route(PrinterDataList.fromMap(printers), self)
 
         case PrinterData(Some(id), Some(settings), _) => //Update Printer printer
           printers.get(id) match {
+            //TODO remove that id at all, and just update each time all data (if needed)
             case None          => Logger.warn(s"Printer with id $id not found")
             case Some(printer) =>
               //              Logger.error(s"NEED IMPLEMENT Printer Settings update $settings")
               (settings, printer.description.config) match {
                 case (PrinterDescription(name, Some(config)), Some(printerConfig))
-                  if printerConfig != config                         =>
-                  Logger.error(s"NEED IMPLEMENT RECONNECT with new $config")
+                  if printerConfig != config                         => //config updated
                   printer.connection match {
-                    case Some(connection) =>
+                    case Some(connection) => // Connection exist for that printer
+                      Logger.error(s"NEED IMPLEMENT RECONNECT with new $config")
                       implicit val timeout = Timeout(1.seconds)
-                      //TODO replace with real message
+                      //TODO replace with real message for status update
                       val future = connection ? "hello"
                       val status = Await.result(future, timeout.duration).asInstanceOf[PrinterConnectionStatus]
                       printers += (id -> printer.withStatus(status))
                       subscribers.route(PrinterDataList.fromMap(printers), self)
-                    case None             =>
+                    case None             => // Connection NOT exist for that printer
+                      Logger.error(s"NEED IMPLEMENT CONNECT with new $config")
                       subscribers.route(PrinterDataList.fromMap(printers), self)
                   }
                 case (PrinterDescription(name, Some(config)), None)  =>
+                  protocols.connect(config, context)
                   Logger.error(s"NEED IMPLEMENT CONNECT with new $config")
                 case (PrinterDescription(name, Some(config)), Some(printerConfig))
                   if printerConfig == config                         =>
@@ -73,7 +81,6 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
                 case (PrinterDescription(name, None), printerConfig) =>
                   Logger.info("Just Update Name")
               }
-
           }
         case _                                        => ""
       }
@@ -104,6 +111,9 @@ object PrinterRegistryActor {
                              status: Option[PrinterConnectionStatus] = None
                             ) {
     def withStatus(p: PrinterConnectionStatus) = copy(status = Some(p))
+
+    def withConnection(c: ActorRef) = copy(connection = Some(c))
+
 
     def withDescription(d: PrinterDescription) = copy(description = d)
   }

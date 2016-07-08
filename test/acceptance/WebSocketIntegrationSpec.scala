@@ -116,6 +116,21 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+    "receive info about connection if create printer with connection configuration" in new TestStateScope {
+      socket.connect()
+      probe.fishForMessage(hint = "state not got") {
+        case JsObject(_) => true
+        case _           => false
+      }
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test create New Printer","config":{"name":"demoport","properties":{"a":"a"} }}}}]}""")
+      //TODO add test that this printer have been created and got it unique id
+      socket.send("""{"type":"ping"}""")
+      probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
+        case TextMessage("""{"type":"pong"}""") => true
+        case _                                  => false
+      }
+      socket.disconnect()
+    }
   }
 
   trait TestProbeScope {
