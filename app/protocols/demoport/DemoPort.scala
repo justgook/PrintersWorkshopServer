@@ -3,6 +3,7 @@ package protocols.demoport
 import actors.PrinterRegistryActor.PrinterData
 import akka.actor.Props
 import play.api.Logger
+import protocols.Connection.{Progress, Status, Temperature}
 import protocols.Property._
 import protocols.{Connection, Protocol, Settings}
 
@@ -21,6 +22,13 @@ object DemoPort extends Protocol {
   ))
 
   class ConnectionActor(config: Connection.Configuration) extends Connection {
+    context.parent ! Status(
+      text = "unknown",
+      file = Some("None"),
+      progress = Some(Progress(done = 10, of = 300)),
+      temperatures = List(Temperature())
+    )
+
     // TODO create subclass of that Connection.Configuration (SerialPort.Configuration)
     def receive = {
       case PrinterData(id, _, _) => Logger.info(s"demoport got id - $id, when my  $config");

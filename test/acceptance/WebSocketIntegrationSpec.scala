@@ -7,8 +7,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{TestKit, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import org.scalatestplus.play._
-import play.api.libs.json.JsObject
-
+import play.api.libs.json.{JsObject, _}
 
 /**
   * Created by Roman Potashow on 21.06.2016.
@@ -122,12 +121,16 @@ class WebSocketIntegrationSpec
         case JsObject(_) => true
         case _           => false
       }
-      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test create New Printer","config":{"name":"demoport","properties":{"a":"a"} }}}}]}""")
-      //TODO add test that this printer have been created and got it unique id
-      socket.send("""{"type":"ping"}""")
-      probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
-        case TextMessage("""{"type":"pong"}""") => true
-        case _                                  => false
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test create New Printer","config":{"name":"demoport","properties":{} }}}}]}""")
+      socket.send("""{"type":"reset"}""")
+
+      probe.fishForMessage(hint = "second set not received") {
+        case JsObject(json) => // TODO update it to for comprehension
+          json.get("printers") match {
+            case Some(p) => (p \ 0 \ "status").isInstanceOf[JsDefined]
+            case None    => false
+          }
+        case _              => false
       }
       socket.disconnect()
     }

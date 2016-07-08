@@ -42,11 +42,12 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
           var printer = lastId -> PrinterInstance(settings)
           settings.config match {
             case Some(config) =>
-              printer = lastId -> printer._2.withConnection(protocols.connect(config, context))
+              val ref = protocols.connect(config, context)
+              connection2id += ref -> lastId
+              printer = lastId -> printer._2.withConnection(ref)
             case None         =>
           }
           printers += printer
-          Logger.info(s"Printer Created $printer")
           subscribers.route(PrinterDataList.fromMap(printers), self)
 
         case PrinterData(Some(id), Some(settings), _) => //Update Printer printer
@@ -88,7 +89,10 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
       val ref = sender()
       connection2id.get(ref) match {
         case Some(id) => printers.get(id) match {
-          case Some(printer) => printers += (id -> printer.withStatus(status))
+          case Some(printer) =>
+            Logger.info("PrinterConnectionStatus => update Status form connection")
+            printers += (id -> printer.withStatus(status))
+            subscribers.route(PrinterDataList.fromMap(printers), self)
           case None          => Logger.warn(s"${self.path.name}(${this.getClass.getName}) no printer with ID $id")
         }
         case None     => Logger.warn(s"${self.path.name}(${this.getClass.getName}) no id for reference  $ref")
