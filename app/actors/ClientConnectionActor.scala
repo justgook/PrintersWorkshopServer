@@ -16,7 +16,6 @@ import play.api.mvc.WebSocket.MessageFlowTransformer
 import protocols.Protocol.SettingsList
 import protocols.{Settings => ProtocolSettings}
 
-
 class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
   extends Actor with ActorLogging {
 
