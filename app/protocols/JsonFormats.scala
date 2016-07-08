@@ -34,7 +34,9 @@ object JsonFormats {
 
     implicit val reads = new Reads[Property]() {
       override def reads(json: JsValue): JsResult[Property] = {
-        def read[X: Reads]: JsResult[X] = (json \ "args").validate[X]
+//        val jsonTransformer = (__ \ "type").json.prune
+//        def read[T: Reads] = implicitly[Reads[T]].reads(json.transform(jsonTransformer).get)
+        def read[X: Reads]: JsResult[X] = json.validate[X]
         (json \ "type").validate[String] flatMap {
           case "bool"   => read[`bool`]
           case "int"    => read[`int`]
