@@ -9,7 +9,6 @@ import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
 import actors.PrinterRegistryActor.{PrinterData, PrinterDataList}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import gnieh.diffson.playJson._
-import play.api.Logger
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
@@ -41,7 +40,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
           if newPrinters != oldPrinters => printers ! PrinterDataList(newPrinters)
         case _                          =>
       }
-      Logger.info(s"ClientConnectionActor Update received, ${state.withPatch(patch)} ")
+
     case SettingsList(list)       =>
       val newState = state.withProtocols(list).withIncrementPatch()
       out ! Patch(state, newState)
@@ -50,11 +49,11 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withConnections(c).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case PrinterDataList(p) =>
+    case PrinterDataList(p)       =>
       val newState = state.withPrinters(p).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case msg                      => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg                      => log.warning(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 

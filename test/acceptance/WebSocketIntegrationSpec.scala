@@ -100,34 +100,45 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
-    "be able create printer via sending state update" in new TestStateScope {
-      socket.connect()
-      probe.fishForMessage(hint = "state not got") {
-        case JsObject(_) => true
-        case _           => false
-      }
-      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test create New Printer"}}}]}""")
-      //TODO add test that this printer have been created and got it unique id
-      socket.send("""{"type":"ping"}""")
-      probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
-        case TextMessage("""{"type":"pong"}""") => true
-        case _                                  => false
-      }
-      socket.disconnect()
-    }
     "receive info about connection if create printer with connection configuration" in new TestStateScope {
       socket.connect()
       probe.fishForMessage(hint = "state not got") {
         case JsObject(_) => true
         case _           => false
       }
-      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test create New Printer","config":{"name":"demoport","properties":{} }}}}]}""")
-      socket.send("""{"type":"reset"}""")
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test Printer 1","config":{"name":"demoport","properties":{} }}}}]}""")
 
       probe.fishForMessage(hint = "second set not received") {
         case JsObject(json) => // TODO update it to for comprehension
           json.get("printers") match {
             case Some(p) => (p \ 0 \ "status").isInstanceOf[JsDefined]
+            case None    => false
+          }
+        case _              => false
+      }
+      socket.disconnect()
+    }
+
+    "update printer name" in new TestStateScope {
+      socket.connect()
+      probe.fishForMessage(hint = "state not got") {
+        case JsObject(_) => true
+        case _           => false
+      }
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test Printer 2","config":{"name":"demoport","properties":{} }}}}]}""")
+      probe.fishForMessage(hint = "second set not received") {
+        case JsObject(json) => // TODO update it to for comprehension
+          json.get("printers") match {
+            case Some(p) => (p \ 0 \ "status").isInstanceOf[JsDefined]
+            case None    => false
+          }
+        case _              => false
+      }
+      socket.send("""{"type":"update","args":[{"op":"replace","path":"/printers/0/settings/name", "value":"New name of printer"}]}""")
+      probe.fishForMessage(hint = "second set not received") {
+        case JsObject(json) => // TODO update it to for comprehension
+          json.get("printers") match {
+            case Some(p) => (p \ 0 \ "settings" \ "name").as[String] == "New name of printer"
             case None    => false
           }
         case _              => false
