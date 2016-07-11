@@ -45,23 +45,22 @@ object PrinterRegistryActor {
   def props: Props = Props[PrinterRegistryActor]
   case class PrinterData(id: Option[Int], settings: Option[PrinterDescription], status: Option[PrinterConnectionStatus] = None)
   case class PrinterDataList(printers: List[PrinterData])
-  case class PrinterInstance(description: PrinterDescription,
-                             connection: Option[ActorRef] = None,
-                             status: Option[PrinterConnectionStatus] = None
-                            ) {
+  case class PrinterDescription(name: String = "unknown", config: Option[Configuration] = None) {
+    def withName(n: String) = copy(name = n)
+
+    def withConfig(c: Configuration) = copy(config = Some(c))
+  }
+  private case class PrinterInstance(description: PrinterDescription,
+                                     connection: Option[ActorRef] = None,
+                                     status: Option[PrinterConnectionStatus] = None
+                                    ) {
     def withStatus(p: PrinterConnectionStatus) = copy(status = Some(p))
 
     def withConnection(c: ActorRef) = copy(connection = Some(c))
 
     def withDescription(d: PrinterDescription) = copy(description = d)
   }
-  case class PrinterDescription(name: String = "unknown", config: Option[Configuration] = None) {
-    def withName(n: String) = copy(name = n)
-
-    def withConfig(c: Configuration) = copy(config = Some(c))
-  }
-
-  case class State(printers: Map[Int, PrinterInstance]) {
+  private case class State(printers: Map[Int, PrinterInstance]) {
     private var lastId = 0
 
     def withStatusUpdate(status: PrinterConnectionStatus, sender: ActorRef): State = {
