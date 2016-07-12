@@ -16,12 +16,12 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test
 )
 
-val akkaV = "2.4.7"
-
+val akkaV = "2.4.8"
+val `odersky-flow` = "3.0.2"
 //main artifact Serial-port
-libraryDependencies += "ch.jodersky" %% "flow-core" % "3.0.1"
+libraryDependencies += "ch.jodersky" %% "flow-core" % `odersky-flow`
 //"fat" jar containing native libraries
-libraryDependencies += "ch.jodersky" % "flow-native" % "3.0.1" % "runtime"
+libraryDependencies += "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime"
 
 libraryDependencies += "org.gnieh" %% "diffson" % "2.0.2"
 libraryDependencies +=  "com.typesafe.akka" %% "akka-testkit" % akkaV

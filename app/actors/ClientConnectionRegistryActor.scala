@@ -2,8 +2,6 @@ package actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
-//import akka.routing.{BroadcastRoutingLogic, Router}
-import play.api.Logger
 
 class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscribers {
 
@@ -19,7 +17,7 @@ class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscri
   }
 
   def receive: Receive = withSubscribers {
-    case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+    case msg => log.warning(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
 
   }
 }

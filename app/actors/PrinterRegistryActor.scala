@@ -39,18 +39,13 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
 object PrinterRegistryActor {
 
-  implicit val printerDescriptionFormat = Json.format[PrinterDescription]
-  implicit val printerDataFormat        = Json.format[PrinterData]
+  //  implicit val printerDescriptionFormat = Json.format[PrinterSettings]
+  implicit val printerDataFormat = Json.format[PrinterData]
 
   def props: Props = Props[PrinterRegistryActor]
-  case class PrinterData(id: Option[Int], settings: Option[PrinterDescription], status: Option[PrinterConnectionStatus] = None)
+  case class PrinterData(name: String, settings: Option[Configuration] = None, status: Option[PrinterConnectionStatus] = None)
   case class PrinterDataList(printers: List[PrinterData])
-  case class PrinterDescription(name: String = "unknown", config: Option[Configuration] = None) {
-    def withName(n: String) = copy(name = n)
-
-    def withConfig(c: Configuration) = copy(config = Some(c))
-  }
-  private case class PrinterInstance(description: PrinterDescription,
+  private case class PrinterInstance(settings: Option[Configuration] = None,
                                      connection: Option[ActorRef] = None,
                                      status: Option[PrinterConnectionStatus] = None
                                     ) {
@@ -58,10 +53,9 @@ object PrinterRegistryActor {
 
     def withConnection(c: ActorRef) = copy(connection = Some(c))
 
-    def withDescription(d: PrinterDescription) = copy(description = d)
+    def withSettings(c: Configuration) = copy(settings = Some(c))
   }
-  private case class State(printers: Map[Int, PrinterInstance]) {
-    private var lastId = 0
+  private case class State(printers: Map[String, PrinterInstance]) {
 
     def withStatusUpdate(status: PrinterConnectionStatus, sender: ActorRef): State = {
       //      val ref = sender
@@ -76,38 +70,27 @@ object PrinterRegistryActor {
 
     def withDataListUpdate(list: PrinterDataList, context: ActorContext): State = {
       val result = list.printers.map {
-        case PrinterData(None, Some(settings), _)     => //Create new printer
-          lastId += 1
+        case PrinterData(name, settings, _) => //Create new printer
           val printer =
-            settings.config match {
+            settings match {
               case Some(config) =>
                 val ref = protocols.connect(config, context)
+                context watch ref
                 PrinterInstance(settings).withConnection(ref)
               case None         => PrinterInstance(settings)
             }
-          lastId -> printer
-        case PrinterData(Some(id), Some(settings), _) =>
-          val printer =
-            settings.config match {
-              case Some(config) =>
-                val ref = protocols.connect(config, context)
-                PrinterInstance(settings).withConnection(ref)
-              case None         => PrinterInstance(settings)
-            }
-          id -> printer
-
-        //        case _                                    => 1 -> PrinterInstance(PrinterDescription("1"))
-      }(collection.breakOut): Map[Int, PrinterInstance]
+          name -> printer
+      }(collection.breakOut): Map[String, PrinterInstance]
       State(printers = result)
     }
   }
 
 
   object PrinterDataList {
-    def fromMap(printers: Map[Int, PrinterInstance]): PrinterDataList = {
+    def fromMap(printers: Map[String, PrinterInstance]): PrinterDataList = {
       val list = printers.map {
-        case (id, printer) =>
-          PrinterData(Some(id), settings = Some(printer.description), status = printer.status)
+        case (name, printer) =>
+          PrinterData(name, settings = printer.settings, status = printer.status)
       }(collection.breakOut): List[PrinterData]
       PrinterDataList(printers = list)
     }

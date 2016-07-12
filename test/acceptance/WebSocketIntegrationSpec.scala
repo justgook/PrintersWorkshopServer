@@ -106,9 +106,9 @@ class WebSocketIntegrationSpec
         case JsObject(_) => true
         case _           => false
       }
-      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test Printer 1","config":{"name":"demoport","properties":{} }}}}]}""")
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer 1", "settings":{"name":"demoport","properties":{} }}}]}""")
 
-      probe.fishForMessage(hint = "second set not received") {
+      probe.fishForMessage(hint = "printer status not received after printer was created") {
         case JsObject(json) => // TODO update it to for comprehension
           json.get("printers") match {
             case Some(p) => (p \ 0 \ "status").isInstanceOf[JsDefined]
@@ -125,8 +125,8 @@ class WebSocketIntegrationSpec
         case JsObject(_) => true
         case _           => false
       }
-      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"settings":{"name":"Test Printer 2","config":{"name":"demoport","properties":{} }}}}]}""")
-      probe.fishForMessage(hint = "second set not received") {
+      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer 2", "settings":{"name":"demoport","properties":{} }}}]}""")
+      probe.fishForMessage(hint = "printer status not received after printer was created") {
         case JsObject(json) => // TODO update it to for comprehension
           json.get("printers") match {
             case Some(p) => (p \ 0 \ "status").isInstanceOf[JsDefined]
@@ -134,11 +134,11 @@ class WebSocketIntegrationSpec
           }
         case _              => false
       }
-      socket.send("""{"type":"update","args":[{"op":"replace","path":"/printers/0/settings/name", "value":"New name of printer"}]}""")
-      probe.fishForMessage(hint = "second set not received") {
+      socket.send("""{"type":"update","args":[{"op":"replace","path":"/printers/0/name", "value":"New name of printer"}]}""")
+      probe.fishForMessage(hint = "name update not received") {
         case JsObject(json) => // TODO update it to for comprehension
           json.get("printers") match {
-            case Some(p) => (p \ 0 \ "settings" \ "name").as[String] == "New name of printer"
+            case Some(p) => (p \ 0 \ "name").as[String] == "New name of printer"
             case None    => false
           }
         case _              => false
