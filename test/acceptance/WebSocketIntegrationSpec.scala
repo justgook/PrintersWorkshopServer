@@ -100,6 +100,25 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+
+    "get update connection count" in new TestStateScope {
+      socket.connect()
+      val probe2  = TestProbe()
+      val socket2 = WebSocketClient(new URI(s"ws://localhost:$port/socket"), probe2)
+      socket2.connect()
+      probe.fishForMessage(hint = "state never had connection count 2") {
+        case JsObject(json) =>
+          json.get("connections") match {
+            case Some(connections) if connections.as[Int] == 2 => true
+            case Some(_) | None                                => false
+          }
+        case _              => false
+      }
+      socket2.disconnect()
+      socket.disconnect()
+    }
+
+
     "receive info about connection if create printer with connection configuration" in new TestStateScope {
       socket.connect()
       probe.fishForMessage(hint = "state not got") {
