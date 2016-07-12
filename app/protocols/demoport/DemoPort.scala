@@ -14,6 +14,8 @@ import protocols.{Connection, Protocol, Settings}
 object DemoPort extends Protocol {
   val name     = "demoport"
   var settings = Settings(name = name, label = "Demo Connection", properties = List(
+    `int`(name = "connection-time", label = "How fast will connect", defaultValue = 0),
+    `int`(name = "printing-speed", label = "Printing speed (delay between lines)", defaultValue = 0),
     `bool`(name = "demo-bool", label = "Switcher", defaultValue = false),
     `int`(name = "demo-int", label = "Some Number", defaultValue = 10),
     `select-int`(name = "demo-select-int", label = "Select Number", enum = List(1, 2, 3, 4, 5, 6, 7, 8, 9)),
@@ -29,7 +31,6 @@ object DemoPort extends Protocol {
       temperatures = List(Temperature())
     )
 
-    // TODO create subclass of that Connection.Configuration (SerialPort.Configuration)
     def receive = {
       case PrinterData(id, _, _) => Logger.info(s"demoport got id - $id, when my  $config");
       case msg                   => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
