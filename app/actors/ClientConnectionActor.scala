@@ -28,19 +28,40 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     printers ! Subscribers.Add(self)
   }
 
-  out ! SetState(state)
+  def receive = stateBuffering
 
-  def receive = {
-    case Ping                     => out ! Pong
-    case Reset                    => out ! SetState(state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
-    case Unknown(t)               => out ! Fail(s"Unknown type $t")
+  def stateBuffering: Receive = {
+    var gotSettings = false
+    var gotConnection = false
+    var gotPrinters = false
+    def checkBuffer(state: State): State = {
+      if (gotSettings && gotConnection && gotPrinters) {
+        out ! SetState(state)
+        context.become(standard)
+      }
+      state
+    }
+    withDefaultMessages {
+      case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
+      case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
+      case PrinterDataList(p)       => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
+    }
+  }
+
+  def withDefaultMessages(fn: Receive): Receive = {
+    case Ping       => out ! Pong
+    case Reset      => out ! SetState(state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
+    case Unknown(t) => out ! Fail(s"Unknown type $t")
+    case other      => fn(other)
+  }
+
+  def standard: Receive = withDefaultMessages {
     case Update(patch)            =>
       (state.withPatch(patch), state) match {
         case (State(_, _, _, newPrinters), State(_, _, _, oldPrinters)) // Printer update from Client
           if newPrinters != oldPrinters => printers ! PrinterDataList(newPrinters)
         case _                          =>
       }
-
     case SettingsList(list)       =>
       val newState = state.withProtocols(list).withIncrementPatch()
       out ! Patch(state, newState)
@@ -53,7 +74,6 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       val newState = state.withPrinters(p).withIncrementPatch()
       out ! Patch(state, newState)
       state = newState
-    case msg                      => log.warning(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 

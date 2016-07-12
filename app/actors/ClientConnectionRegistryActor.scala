@@ -18,7 +18,6 @@ class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscri
 
   def receive: Receive = withSubscribers {
     case msg => log.warning(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
-
   }
 }
 
