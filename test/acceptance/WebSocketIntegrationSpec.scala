@@ -8,7 +8,9 @@ import akka.actor.ActorSystem
 import akka.testkit.{TestKit, TestProbe}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import org.scalatestplus.play._
-import play.api.libs.json.{JsObject, _}
+import play.api.libs.json._
+
+import scala.language.reflectiveCalls
 
 /**
   * Created by Roman Potashow on 21.06.2016.
