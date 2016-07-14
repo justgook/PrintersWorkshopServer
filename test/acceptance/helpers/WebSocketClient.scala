@@ -1,4 +1,4 @@
-package acceptance
+package acceptance.helpers
 
 import java.net.{InetSocketAddress, URI}
 import java.nio.charset.Charset
@@ -49,29 +49,11 @@ trait WebSocketClient {
   */
 object WebSocketClient {
 
-  object Messages {
-    sealed trait WebSocketClientMessage
-    case object Connecting extends WebSocketClientMessage
-    case class ConnectionFailed(reason: Option[Throwable] = None) extends WebSocketClientMessage
-    case object Connected extends WebSocketClientMessage
-    case class TextMessage(text: String) extends WebSocketClientMessage
-    case class WriteFailed(message: String, reason: Option[Throwable]) extends WebSocketClientMessage
-    case object Disconnecting extends WebSocketClientMessage
-    case class Disconnected(reason: Option[Throwable] = None) extends WebSocketClientMessage
-    case class Error(th: Throwable) extends WebSocketClientMessage
-  }
-
   type Handler = PartialFunction[Messages.WebSocketClientMessage, Unit]
   type FrameReader = WebSocketFrame => String
-
   val defaultFrameReader = (_: WebSocketFrame) match {
     case f: TextWebSocketFrame => f.getText
     case _                     => throw new UnsupportedOperationException("Only single text frames are supported for now")
-  }
-
-  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
-    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
-    new DefaultWebSocketClient(url, version, handle, reader)
   }
 
   def apply(url: URI, handle: ActorRef): WebSocketClient = {
@@ -84,6 +66,33 @@ object WebSocketClient {
     WebSocketClient(url) { case x => handle.ref ! x }
   }
 
+  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
+    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
+    new DefaultWebSocketClient(url, version, handle, reader)
+  }
+  /**
+    * Fix bug in standard HttpResponseDecoder for web socket clients. When status 101 is received for Hybi00, there are 16
+    * bytes of contents expected
+    */
+  class WebSocketHttpResponseDecoder extends HttpResponseDecoder {
+
+    val codes = List(101, 200, 204, 205, 304)
+
+    protected override def isContentAlwaysEmpty(msg: HttpMessage) = {
+      msg match {
+        case res: HttpResponse => codes contains res.getStatus.getCode
+        case _                 => false
+      }
+    }
+  }
+  /**
+    * A WebSocket related exception
+    *
+    * Copied from https://github.com/cgbystrom/netty-tools
+    */
+  class WebSocketException(s: String, th: Throwable) extends java.io.IOException(s, th) {
+    def this(s: String) = this(s, null)
+  }
   private class WebSocketClientHandler(handshaker: WebSocketClientHandshaker, client: WebSocketClient) extends SimpleChannelUpstreamHandler {
 
     import Messages._
@@ -127,36 +136,14 @@ object WebSocketClient {
       new URI(normalized.getScheme, normalized.getAuthority, "/", normalized.getQuery, normalized.getFragment)
     } else normalized
 
-    val bootstrap        = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool, Executors.newCachedThreadPool))
-    val handshaker       = new WebSocketClientHandshakerFactory().newHandshaker(tgt, version, null, false, Map.empty[String, String])
-    val self             = this
-    var channel: Channel = _
+    val bootstrap  = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool, Executors.newCachedThreadPool))
+    val handshaker = new WebSocketClientHandshakerFactory().newHandshaker(tgt, version, null, false, Map.empty[String, String])
+    val self       = this
+    val handler    = _handler orElse defaultHandler
 
     import Messages._
 
-    val handler = _handler orElse defaultHandler
-
-    private def defaultHandler: Handler = {
-      case Error(ex)                 => ex.printStackTrace()
-      case _: WebSocketClientMessage =>
-    }
-
-
-    bootstrap.setPipelineFactory(new ChannelPipelineFactory {
-      def getPipeline = {
-        val pipeline = Channels.pipeline()
-        if (version == WebSocketVersion.V00)
-          pipeline.addLast("decoder", new WebSocketHttpResponseDecoder)
-        else
-          pipeline.addLast("decoder", new HttpResponseDecoder)
-
-        pipeline.addLast("encoder", new HttpRequestEncoder)
-        pipeline.addLast("ws-handler", new WebSocketClientHandler(handshaker, self))
-        pipeline
-      }
-    })
-
-    import WebSocketClient.Messages._
+    var channel: Channel = _
 
     def connect() = {
       if (channel == null || !channel.isConnected) {
@@ -177,6 +164,29 @@ object WebSocketClient {
       }
     }
 
+
+    bootstrap.setPipelineFactory(new ChannelPipelineFactory {
+      def getPipeline = {
+        val pipeline = Channels.pipeline()
+        if (version == WebSocketVersion.V00)
+          pipeline.addLast("decoder", new WebSocketHttpResponseDecoder)
+        else
+          pipeline.addLast("decoder", new HttpResponseDecoder)
+
+        pipeline.addLast("encoder", new HttpRequestEncoder)
+        pipeline.addLast("ws-handler", new WebSocketClientHandler(handshaker, self))
+        pipeline
+      }
+    })
+
+    import WebSocketClient.Messages._
+
+    def futureListener(handleWith: ChannelFuture => Unit) = new ChannelFutureListener {
+      def operationComplete(future: ChannelFuture) {
+        handleWith(future)
+      }
+    }
+
     def disconnect() = {
       if (channel != null && channel.isConnected) {
         handler(Disconnecting)
@@ -193,36 +203,22 @@ object WebSocketClient {
       })
     }
 
-    def futureListener(handleWith: ChannelFuture => Unit) = new ChannelFutureListener {
-      def operationComplete(future: ChannelFuture) {
-        handleWith(future)
-      }
+    private def defaultHandler: Handler = {
+      case Error(ex)                 => ex.printStackTrace()
+      case _: WebSocketClientMessage =>
     }
   }
 
-  /**
-    * Fix bug in standard HttpResponseDecoder for web socket clients. When status 101 is received for Hybi00, there are 16
-    * bytes of contents expected
-    */
-  class WebSocketHttpResponseDecoder extends HttpResponseDecoder {
-
-    val codes = List(101, 200, 204, 205, 304)
-
-    protected override def isContentAlwaysEmpty(msg: HttpMessage) = {
-      msg match {
-        case res: HttpResponse => codes contains res.getStatus.getCode
-        case _                 => false
-      }
-    }
-  }
-
-  /**
-    * A WebSocket related exception
-    *
-    * Copied from https://github.com/cgbystrom/netty-tools
-    */
-  class WebSocketException(s: String, th: Throwable) extends java.io.IOException(s, th) {
-    def this(s: String) = this(s, null)
+  object Messages {
+    sealed trait WebSocketClientMessage
+    case class ConnectionFailed(reason: Option[Throwable] = None) extends WebSocketClientMessage
+    case class TextMessage(text: String) extends WebSocketClientMessage
+    case class WriteFailed(message: String, reason: Option[Throwable]) extends WebSocketClientMessage
+    case class Disconnected(reason: Option[Throwable] = None) extends WebSocketClientMessage
+    case class Error(th: Throwable) extends WebSocketClientMessage
+    case object Connecting extends WebSocketClientMessage
+    case object Connected extends WebSocketClientMessage
+    case object Disconnecting extends WebSocketClientMessage
   }
 
 }

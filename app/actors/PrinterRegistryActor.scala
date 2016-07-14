@@ -2,7 +2,6 @@ package actors
 
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import play.api.Logger
 import play.api.libs.json.Json
 import protocols.Connection.{Configuration, Status => PrinterConnectionStatus}
 
@@ -14,26 +13,19 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
   import actors.PrinterRegistryActor._
 
-
-  /*TODO get rid of ID - then there will no be need of store lastId, connection2id, and printers can me list,
-   * but need find a way how to order them inside
-   */
   private var state = State(Map.empty)
 
-  override def afterAdd(client: ActorRef): Unit = {
-    client ! PrinterDataList.fromMap(state.printers)
-  }
+  override def afterAdd(client: ActorRef) = client ! PrinterDataList.fromMap(state.printers)
+
 
   def receive = withSubscribers {
     case PrinterDataList(list) =>
-      state = state.withDataListUpdate(PrinterDataList(list), context)
+      state = state.fromDataListUpdate(list, context)
       subscribers.route(PrinterDataList.fromMap(state.printers), self)
 
     case status: PrinterConnectionStatus => //update Status form connection
       state = state.withStatusUpdate(status, sender())
       subscribers.route(PrinterDataList.fromMap(state.printers), self)
-
-    case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
   }
 }
 
@@ -55,22 +47,30 @@ object PrinterRegistryActor {
 
     def withSettings(c: Configuration) = copy(settings = Some(c))
   }
+  //  private object  State {
+  //    def getListDiff(list1: List[Any], list2: List[Any]) = {
+  //      val unwanted = list2.toSet
+  //      list1.filterNot(unwanted)
+  //    }
+  //  }
   private case class State(printers: Map[String, PrinterInstance]) {
-
+    //    import State._
+    //Status update from connection
     def withStatusUpdate(status: PrinterConnectionStatus, sender: ActorRef): State = {
-      //      val ref = sender
       val result = printers map {
-        case (id, PrinterInstance(desc, Some(conn), _))
-          if conn == sender              => id -> PrinterInstance(desc, Some(conn), Some(status))
-        case (id, item: PrinterInstance) => id -> item
-
+        case (name, PrinterInstance(desc, Some(conn), _))
+          if conn == sender                => name -> PrinterInstance(desc, Some(conn)).withStatus(status)
+        case (name, item: PrinterInstance) => name -> item
       }
       State(result)
     }
 
-    def withDataListUpdate(list: PrinterDataList, context: ActorContext): State = {
-      val result = list.printers.map {
-        case PrinterData(name, settings, _) => //Create new printer
+    def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State = {
+      val toUpdateOrCreate = list.filterNot(PrinterDataList.fromMap(printers).printers.toSet)
+      val toDelete = list.filterNot(PrinterDataList.fromMap(printers).printers.toSet)
+      //TODO clear it up and find some solution how to detect updates / creation / remove
+      val result = list.map {
+        case PrinterData(name, settings, None)         => //Create new printer
           val printer =
             settings match {
               case Some(config) =>
@@ -80,12 +80,14 @@ object PrinterRegistryActor {
               case None         => PrinterInstance(settings)
             }
           name -> printer
+        case PrinterData(name, settings, Some(status)) => //Update printer
+          val printer = PrinterInstance(settings).withStatus(status)
+          name -> printer
       }(collection.breakOut): Map[String, PrinterInstance]
-      State(printers = result)
+
+      State(result)
     }
   }
-
-
   object PrinterDataList {
     def fromMap(printers: Map[String, PrinterInstance]): PrinterDataList = {
       val list = printers.map {

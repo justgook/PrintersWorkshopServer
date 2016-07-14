@@ -26,11 +26,10 @@ trait Subscribers {
       afterTerminated(subscriber)
   }
 
-  def afterAdd(subscriber: ActorRef): Unit = {}
-
   def afterTerminated(subscriber: ActorRef): Unit = {}
-}
 
+  def afterAdd(subscriber: ActorRef): Unit
+}
 
 object Subscribers {
   case class Add(subscriber: ActorRef)

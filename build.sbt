@@ -16,6 +16,10 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test
 )
 
+scalacOptions := Seq("-feature")
+
+
+
 val akkaV = "2.4.8"
 val `odersky-flow` = "3.0.2"
 //main artifact Serial-port
