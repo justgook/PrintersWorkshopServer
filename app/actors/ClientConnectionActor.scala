@@ -50,7 +50,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
       case PrinterDataList(p)       => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
-      //      case Update(_, _)             => println("\n!!!Not in time update\n")
+      case Update(_, _)             => println("\n!!!Not in time update\n")
     }
   }
 
