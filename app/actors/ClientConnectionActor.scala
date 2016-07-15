@@ -23,6 +23,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
 
   import ClientConnectionActor._
 
+  //TODO don't increment revision for read only data - otherwhise there will not abele to send updates / stay in sync with server
   private var revision = 1
   private var state    = State()
 
@@ -53,14 +54,6 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     }
   }
 
-
-  def withDefaultMessages(fn: Receive): Receive = {
-    case Ping       => out ! Pong
-    case Reset      => out ! SetState(revision, state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
-    case Unknown(t) => out ! Fail(Fail.Status.UNKNOWN_MESSAGE)
-    case other      => fn(other)
-  }
-
   def standard: Receive = withDefaultMessages {
     case Update(rev, patch) if rev != revision + 1 =>
       log.warning(s"Client sent update with revision $rev when current revision is $revision")
@@ -76,6 +69,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
           (newState, oldState) match {
             case (State(_, _, newPrinters), State(_, _, oldPrinters)) // Printer update from Client
               if newPrinters != oldPrinters =>
+              log.warning("ClientConnectionActor send update to PrinterRegistryActor")
               printers ! PrinterDataList(newPrinters)
           }
       }
@@ -100,6 +94,13 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
         out ! Patch(revision, state, newState)
         state = newState
       }
+  }
+
+  def withDefaultMessages(fn: Receive): Receive = {
+    case Ping       => out ! Pong
+    case Reset      => out ! SetState(revision, state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
+    case Unknown(t) => out ! Fail(Fail.Status.UNKNOWN_MESSAGE)
+    case other      => fn(other)
   }
 }
 

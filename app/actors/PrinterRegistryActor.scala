@@ -2,9 +2,9 @@ package actors
 
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import play.api.Logger
 import play.api.libs.json.Json
 import protocols.Connection.{Configuration, Status => PrinterConnectionStatus}
-
 /**
   * Created by Roman Potashow on 26.06.2016.
   */
@@ -67,8 +67,8 @@ object PrinterRegistryActor {
 
     def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State = {
       val toUpdateOrCreate = list.filterNot(PrinterDataList.fromMap(printers).printers.toSet)
-      val toDelete = list.filterNot(PrinterDataList.fromMap(printers).printers.toSet)
       //TODO clear it up and find some solution how to detect updates / creation / remove
+      Logger.info("\n!!fromDataListUpdate!!\n")
       val result = list.map {
         case PrinterData(name, settings, None)         => //Create new printer
           val printer =
@@ -81,8 +81,7 @@ object PrinterRegistryActor {
             }
           name -> printer
         case PrinterData(name, settings, Some(status)) => //Update printer
-          val printer = PrinterInstance(settings).withStatus(status)
-          name -> printer
+          name -> PrinterInstance(settings).withStatus(status)
       }(collection.breakOut): Map[String, PrinterInstance]
 
       State(result)

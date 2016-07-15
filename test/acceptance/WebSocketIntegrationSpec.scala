@@ -154,62 +154,29 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
-
-
-    //
-    //    "update printer name" in new TestStateScope {
-    //      def createPlainPrinter(name: String) = {
-    //        def message(as: String) = s"""{"type":"$as","args":[{"op":"add","path":"/printers/-","value":{"name":" $name","settings":{"name":"demoport","properties":{} }}}]}"""
-    //        stateParserActor ! message("patch")
-    //        socket.send(message("update"))
-    //      }
-    //
-    //      def updatePrinterName(index: Int, name: String) = {
-    //        def message(as: String) = s"""{"type":"$as","args":[{"op":"replace","path":"/printers/$index/name", "value":"$name"}]}"""
-    //        stateParserActor ! message("patch")
-    //        socket.send(message("update"))
-    //      }
-    //
-    //
-    //      createPlainPrinter("Test Printer 1")
-    //      createPlainPrinter("Test Printer 2")
-    //      updatePrinterName(1, "New name of printer")
-    //      socket.send("""{"type":"reset"}""")
-    //
-    //      probe.fishForMessage(hint = "name update not received") {
-    //        case JsObject(json) =>
-    //          println(s"\n\n\n$json\n\n\n")
-    //          json.get("printers") match {
-    //            case Some(p) => (p \ 1 \ "name").as[String] == "New name of printer"
-    //            case None    => false
-    //          }
-    //        case _              => false
-    //      }
-    //      socket.disconnect()
-    //    }
-
-    //    "be able delete printer" in new TestStateScope {
-    //      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer 1", "settings":{"name":"demoport","properties":{} }}}]}""")
-    //      socket.send("""{"type":"update","args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer 2", "settings":{"name":"demoport","properties":{} }}}]}""")
-    //      probe.fishForMessage(hint = "not found second printer (must be 2)") {
-    //        case JsObject(json) => // TODO update it to for comprehension
-    //          json.get("printers") match {
-    //            case Some(p) => (p \ 1 ).isInstanceOf[JsDefined]
-    //            case None    => false
-    //          }
-    //        case _              => false
-    //      }
-    ////      socket.send("""{"type":"update","args":[{"op":"replace","path":"/printers/0/name", "value":"New name of printer"}]}""")
-    ////      probe.fishForMessage(hint = "name update not received") {
-    ////        case JsObject(json) => // TODO update it to for comprehension
-    ////          json.get("printers") match {
-    ////            case Some(p) => (p \ 0 \ "name").as[String] == "New name of printer"
-    ////            case None    => false
-    ////          }
-    ////        case _              => false
-    ////      }
-    //      socket.disconnect()
-    //    }
+    "update printer name" in new ClientState {
+      socket.connect()
+      stateProbe.expectInitialState()
+      withPrinter("1")
+      sendUpdate(Json.parse("""[{"op":"replace","path":"/printers/0/name","value":"New Name of Test Printer"}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "State not updated") {
+        case (state: JsObject, rev) => true
+        case _                      => false
+      }
+      socket.send("""{"type":"reset"}""")
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) => (for {name <- (state \ "printers" \ 0 \ "name").asOpt[String] if name == "New Name of Test Printer"} yield true) getOrElse false
+        case _                      => false
+      }
+      socket.disconnect()
+    }
+    "delete printer" in new ClientState {
+      socket.connect()
+      stateProbe.expectInitialState()
+      withPrinter("1")
+      deletePrinter(0)
+      socket.disconnect()
+    }
   }
 
   trait TestProbeScope {
@@ -218,6 +185,7 @@ class WebSocketIntegrationSpec
   }
 
   trait ClientState {
+    //TODO update it to proxy
     val stateProbe = new TestProbe(system) {
       def expectInitialState() = {
         fishForMessage(hint = "state not got") {
@@ -225,6 +193,7 @@ class WebSocketIntegrationSpec
           case _                      => false
         }
       }
+
 
       def expectConnectionCount(n: Int) = {
         fishForMessage(hint = s"state never had connection count $n") {
@@ -237,9 +206,26 @@ class WebSocketIntegrationSpec
     val client = system.actorOf(StateObserver.props(stateProbe))
     val socket = WebSocketClient(new URI(s"ws://localhost:$port/socket"), client)
 
+    def withPrinter(name: String = "Test Printer"): Unit = {
+      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/-","value":{"name":"$name", "settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) => (state \ "printers" \ 0 \ "status").isInstanceOf[JsDefined]
+        case _                      => false
+      }
+    }
+
     def sendUpdate(args: JsArray) = {
-      client ! args
-      socket.send(s"""{"type":"update", "revision": 2, "args": $args}""")
+      client ! (args, socket)
+    }
+
+    //TODO update to indexing by name, no by index
+    def deletePrinter(index: Int = 0) = {
+      sendUpdate(Json.parse(s"""[{"op":"remove","path":"/printers/$index"}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        //TODO add validtion that printer is gone, not all printers are deleted
+        case (state: JsObject, rev) => (for {size <- (state \ "printers").asOpt[JsArray].map(_.value.size) if size == 0} yield true) getOrElse false //.isInstanceOf[JsDefined]
+        case _                      => false
+      }
     }
   }
 
