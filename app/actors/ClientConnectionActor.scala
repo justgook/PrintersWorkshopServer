@@ -7,7 +7,7 @@ package actors
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
 import actors.PrinterRegistryActor.{PrinterData, PrinterDataList}
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import gnieh.diffson.playJson._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 
 
 class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
-  extends Actor with ActorLogging {
+  extends Actor with ActorLogging with Stash {
 
   import ClientConnectionActor._
 
@@ -42,6 +42,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     def checkBuffer(state: State): State = {
       if (gotSettings && gotConnection && gotPrinters) {
         out ! SetState(revision, state)
+        unstashAll()
         context.become(standard)
       }
       state
@@ -50,7 +51,7 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
       case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
       case PrinterDataList(p)       => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
-      case Update(_, _)             => println("\n!!!Not in time update\n")
+      case Update(_, _)             => stash()
     }
   }
 
