@@ -24,6 +24,7 @@ class StateObserver(testProbe: TestProbe) extends Actor with ActorLogging {
           state = (json \ "args").as[JsObject]
           revision = (json \ "revision").as[Int] //(json \ "revision").asOpt[Int].getOrElse(revision)
           testProbe.ref ! (state, revision)
+
         case "success" =>
           revision = (json \ "revision").as[Int] //(json \ "revision").asOpt[Int].getOrElse(revision)
           testProbe.ref ! (state, revision)

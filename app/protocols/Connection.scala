@@ -19,7 +19,11 @@ object Connection {
   implicit val StatusFormat        = Json.format[Status]
   case class Configuration(name: String = "none", properties: Map[String, String] = Map.empty)
   //State definition
-  case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature()))
+  case class Status(text: String = "unknown", file: Option[String] = None /*Change to FileLink*/ , progress: Option[Progress] = None, temperatures: List[Temperature] = List(Temperature())) {
+    def withFile(file: String) = copy(file = Some(file))
+
+    def readyToPrint() = copy(text = "ready")
+  }
   case class Progress(done: Int, of: Int)
   case class Temperature(name: String = "unknown", data: List[Int] = List())
 

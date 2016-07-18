@@ -24,16 +24,22 @@ object DemoPort extends Protocol {
   ))
 
   class ConnectionActor(config: Connection.Configuration) extends Connection {
-    context.parent ! Status(
+
+    var status = Status(
       text = "unknown",
       file = Some("None"),
       progress = Some(Progress(done = 10, of = 300)),
       temperatures = List(Temperature())
     )
 
+    context.parent ! status
+
     def receive = {
-      case PrinterData(id, _, _) => Logger.info(s"demoport got id - $id, when my  $config");
-      case msg                   => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+      case PrinterData(n, _, _)                          => Logger.info(s"demoport got name - $n, when my $config")
+      case Status(_, Some(file), progress, temperatures) => //TODO add validation that printer-status not in printing state
+        status = status.withFile(file).readyToPrint()
+        context.parent ! status
+      case msg                                           => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
     }
   }
 

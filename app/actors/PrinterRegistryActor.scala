@@ -1,10 +1,10 @@
 package actors
 
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import play.api.Logger
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
 import play.api.libs.json.Json
 import protocols.Connection.{Configuration, Status => PrinterConnectionStatus}
+
 /**
   * Created by Roman Potashow on 26.06.2016.
   */
@@ -41,49 +41,69 @@ object PrinterRegistryActor {
                                      connection: Option[ActorRef] = None,
                                      status: Option[PrinterConnectionStatus] = None
                                     ) {
-    def withStatus(p: PrinterConnectionStatus) = copy(status = Some(p))
+    def withStatus(p: Option[PrinterConnectionStatus]) = copy(status = p)
+
+    def withSettingsUpdate(context: ActorContext, c: Option[Configuration]) = {
+      (settings, c) match {
+        case (oldConfig, newConfig)
+          if oldConfig != newConfig && newConfig.isDefined =>
+          connection match {
+            case Some(conn) => conn ! PoisonPill
+            case None       =>
+          }
+          val ref = protocols.connect(newConfig.get, context)
+          context watch ref
+          copy(settings = c).withConnection(ref)
+        case _                                             => copy(settings = c)
+      }
+    }
 
     def withConnection(c: ActorRef) = copy(connection = Some(c))
-
-    def withSettings(c: Configuration) = copy(settings = Some(c))
   }
-  //  private object  State {
-  //    def getListDiff(list1: List[Any], list2: List[Any]) = {
-  //      val unwanted = list2.toSet
-  //      list1.filterNot(unwanted)
-  //    }
-  //  }
+
   private case class State(printers: Map[String, PrinterInstance]) {
-    //    import State._
-    //Status update from connection
     def withStatusUpdate(status: PrinterConnectionStatus, sender: ActorRef): State = {
       val result = printers map {
         case (name, PrinterInstance(desc, Some(conn), _))
-          if conn == sender                => name -> PrinterInstance(desc, Some(conn)).withStatus(status)
+          if conn == sender                => name -> PrinterInstance(desc, Some(conn)).withStatus(Some(status))
         case (name, item: PrinterInstance) => name -> item
       }
       State(result)
     }
 
-    def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State = {
-      val toUpdateOrCreate = list.filterNot(PrinterDataList.fromMap(printers).printers.toSet)
-      //TODO clear it up and find some solution how to detect updates / creation / remove
-      Logger.info("\n!!fromDataListUpdate!!\n")
-      val result = list.map {
-        case PrinterData(name, settings, None)         => //Create new printer
-          val printer =
-            settings match {
-              case Some(config) =>
-                val ref = protocols.connect(config, context)
-                context watch ref
-                PrinterInstance(settings).withConnection(ref)
-              case None         => PrinterInstance(settings)
-            }
-          name -> printer
-        case PrinterData(name, settings, Some(status)) => //Update printer
-          name -> PrinterInstance(settings).withStatus(status)
-      }(collection.breakOut): Map[String, PrinterInstance]
+    private def createNewPrinter(context: ActorContext, newItem: PrinterData): PrinterInstance = {
+      PrinterInstance().withSettingsUpdate(context, newItem.settings)
+    }
 
+    private def createNewPrinter(context: ActorContext, newItem: PrinterData): PrinterInstance = {
+      PrinterInstance().withSettingsUpdate(context, newItem.settings)
+    }
+
+    private def updatePrinter(context: ActorContext, oldPrinter: PrinterInstance, newItem: PrinterData): PrinterInstance = {
+      (oldPrinter, newItem) match {
+        case (currentPrinter, PrinterData(_, newSettings, newStatus))
+          if (newSettings.isDefined && currentPrinter.settings != newSettings) || (newStatus.isDefined && currentPrinter.status != newStatus) =>
+          //TODO find some cleaner way how to detect update of status commands, when not settings left as is
+          if (currentPrinter.connection.isDefined && newStatus.isDefined && currentPrinter.status != newStatus && !(newSettings.isDefined && currentPrinter.settings != newSettings)) {
+            currentPrinter.connection.get ! newStatus.get
+          }
+          currentPrinter.withSettingsUpdate(context, newSettings).withStatus(newStatus)
+        case _                                                                                                                                =>
+          oldPrinter
+      }
+    }
+
+    def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State =
+    {
+      val result = printers ++ list.map(item => {
+        val name = item.name
+        (item, printers.get(name)) match {
+          case (newItem, None)          =>
+            name -> createNewPrinter(context, newItem)
+          case (newItem, Some(oldItem)) =>
+            name -> updatePrinter(context, oldItem, newItem)
+        }
+      }).toMap[String, PrinterInstance]
       State(result)
     }
   }
