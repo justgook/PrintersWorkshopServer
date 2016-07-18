@@ -71,8 +71,17 @@ object PrinterRegistryActor {
       State(result)
     }
 
-    private def createNewPrinter(context: ActorContext, newItem: PrinterData): PrinterInstance = {
-      PrinterInstance().withSettingsUpdate(context, newItem.settings)
+    def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State = {
+      val result = printers ++ list.map(item => {
+        val name = item.name
+        (item, printers.get(name)) match {
+          case (newItem, None)          =>
+            name -> createNewPrinter(context, newItem)
+          case (newItem, Some(oldItem)) =>
+            name -> updatePrinter(context, oldItem, newItem)
+        }
+      }).toMap[String, PrinterInstance]
+      State(result)
     }
 
     private def createNewPrinter(context: ActorContext, newItem: PrinterData): PrinterInstance = {
@@ -91,20 +100,6 @@ object PrinterRegistryActor {
         case _                                                                                                                                =>
           oldPrinter
       }
-    }
-
-    def fromDataListUpdate(list: List[PrinterData], context: ActorContext): State =
-    {
-      val result = printers ++ list.map(item => {
-        val name = item.name
-        (item, printers.get(name)) match {
-          case (newItem, None)          =>
-            name -> createNewPrinter(context, newItem)
-          case (newItem, Some(oldItem)) =>
-            name -> updatePrinter(context, oldItem, newItem)
-        }
-      }).toMap[String, PrinterInstance]
-      State(result)
     }
   }
   object PrinterDataList {
