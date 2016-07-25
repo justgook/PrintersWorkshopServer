@@ -27,7 +27,7 @@ class StateObserver(testProbe: TestProbe) extends Actor with ActorLogging {
 
         case "success" =>
           revision = (json \ "revision").as[Int] //(json \ "revision").asOpt[Int].getOrElse(revision)
-          testProbe.ref ! (state, revision)
+          testProbe.ref ! ("success", revision)
         case "patch"   =>
           val patch = JsonPatch.parse(s"${(json \ "args").as[JsArray]}")
           state = patch(state).as[JsObject]

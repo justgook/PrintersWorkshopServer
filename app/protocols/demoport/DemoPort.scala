@@ -26,7 +26,7 @@ object DemoPort extends Protocol {
   class ConnectionActor(config: Connection.Configuration) extends Connection {
 
     var status = Status(
-      text = "unknown",
+      //      ,
       file = Some("None"),
       progress = Some(Progress(done = 10, of = 300)),
       temperatures = List(Temperature())

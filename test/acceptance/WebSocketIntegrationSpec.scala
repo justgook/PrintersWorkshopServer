@@ -121,7 +121,8 @@ class WebSocketIntegrationSpec
 
       stateProbe.expectInitialState()
 
-      socket.send("""{"type":"update", "revision": 2, "args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer", "settings":{"name":"demoport","properties":{} }}}]}""")
+      socket.send("""{"type":"update", "revision": 2, "args":[{"op":"add","path":"/printers/-","value":{"name":"Test Printer"}}]}""")
+      socket.send("""{"type":"reset"}""")
       stateProbe.fishForMessage(hint = "state not got") {
         case (state: JsObject, rev) => rev == 2
         case _                      => false
@@ -154,6 +155,7 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+
     //    "update printer name" in new ClientState {
     //      socket.connect()
     //      stateProbe.expectInitialState()
@@ -190,6 +192,29 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+
+    //    "delete printer is status text set to 'remove' " in new ClientState {
+    //      socket.connect()
+    //      stateProbe.expectInitialState()
+    //      withPrinter("1")
+    //      sendUpdate(Json.parse("""[{"op":"replace","path":"/printers/0/status/text","value":"remove"}]""").as[JsArray])
+    //      stateProbe.fishForMessage(hint = "printers array not empty") {
+    //        case (state: JsObject, rev) => (for {size <- (state \ "printers").asOpt[JsArray].map(_.value.size) if size == 0} yield true) getOrElse false
+    //        case _                      => false
+    //      }
+    //      socket.disconnect()
+    //    }
+    //    "connect to serial port" in new ClientState {
+    //      socket.connect()
+    //      stateProbe.expectInitialState()
+    //      withSerialPortPrinter()
+    //      stateProbe.fishForMessage(hint = "printer 0 status never updated") {
+    //        case (state: JsObject, rev) => (for {statusText <- (state \ "printers" \ 0 \ "status" \ "text").asOpt[String] if statusText == "ready"} yield true) getOrElse false
+    //        case _                      => false
+    //      }
+    //      socket.disconnect()
+    //    }
+
   }
 
   trait TestProbeScope {
@@ -219,8 +244,8 @@ class WebSocketIntegrationSpec
     val client = system.actorOf(StateObserver.props(stateProbe))
     val socket = WebSocketClient(new URI(s"ws://localhost:$port/socket"), client)
 
-    def withPrinter(name: String = "Test Printer"): Unit = {
-      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/-","value":{"name":"$name", "settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+    def withSerialPortPrinter(name: String = "Test Printer"): Unit = {
+      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/-","value":{"name":"$name", "settings":{"name":"serialport","properties":{} }}}]""").as[JsArray])
       stateProbe.fishForMessage(hint = "printers status not got") {
         case (state: JsObject, rev) => (state \ "printers" \ 0 \ "status").isInstanceOf[JsDefined] // TODO update to searching by name
         case _                      => false
@@ -229,17 +254,33 @@ class WebSocketIntegrationSpec
 
     def sendUpdate(args: JsArray) = {
       client ! (args, socket)
+      awaitSuccess()
     }
 
-    //TODO update to indexing by name, no by index
-    def deletePrinter(index: Int = 0) = {
-      sendUpdate(Json.parse(s"""[{"op":"remove","path":"/printers/$index"}]""").as[JsArray])
-      stateProbe.fishForMessage(hint = "printers array not empty") {
-        //TODO add validtion that printer is gone, not all printers are deleted
-        case (state: JsObject, rev) => (for {size <- (state \ "printers").asOpt[JsArray].map(_.value.size) if size == 0} yield true) getOrElse false //.isInstanceOf[JsDefined]
+    def awaitSuccess(): Unit = {
+      stateProbe.fishForMessage(hint = s"success not received") {
+        case ("success", rev) => true
+        case _                => false
+      }
+    }
+
+    def withPrinter(name: String = "Test Printer"): Unit = {
+      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/-","value":{"name":"$name", "settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) => (state \ "printers" \ 0 \ "status").isInstanceOf[JsDefined] // TODO update to searching by name
         case _                      => false
       }
     }
+
+    //TODO update to indexing by name, no by index
+    //    def deletePrinter(index: Int = 0) = {
+    //      sendUpdate(Json.parse(s"""[{"op":"remove","path":"/printers/$index"}]""").as[JsArray])
+    //      stateProbe.fishForMessage(hint = "printers array not empty") {
+    //        //TODO add validtion that printer is gone, not all printers are deleted
+    //        case (state: JsObject, rev) => (for {size <- (state \ "printers").asOpt[JsArray].map(_.value.size) if size == 0} yield true) getOrElse false //.isInstanceOf[JsDefined]
+    //        case _                      => false
+    //      }
+    //    }
   }
 
 }

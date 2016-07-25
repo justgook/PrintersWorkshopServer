@@ -2,6 +2,7 @@ package actors
 
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, PoisonPill, Props}
+import play.api.Logger
 import play.api.libs.json.Json
 import protocols.Connection.{Configuration, Status => PrinterConnectionStatus}
 
@@ -19,13 +20,16 @@ class PrinterRegistryActor extends Actor with ActorLogging with Subscribers {
 
 
   def receive = withSubscribers {
-    case PrinterDataList(list) =>
+    case PrinterDataList(list)           =>
       state = state.fromDataListUpdate(list, context)
       subscribers.route(PrinterDataList.fromMap(state.printers), self)
-
     case status: PrinterConnectionStatus => //update Status form connection
       state = state.withStatusUpdate(status, sender())
       subscribers.route(PrinterDataList.fromMap(state.printers), self)
+    case config: Configuration           => // Config update from serialPort
+      state = state.withConfigUpdate(config, sender())
+      subscribers.route(PrinterDataList.fromMap(state.printers), self)
+    case t                               => log.warning(s"Got unknown message $t")
   }
 }
 
@@ -62,6 +66,16 @@ object PrinterRegistryActor {
   }
 
   private case class State(printers: Map[String, PrinterInstance]) {
+
+    def withConfigUpdate(config: Configuration, sender: ActorRef): State = {
+      val result = printers map {
+        case (name, PrinterInstance(desc, Some(conn), status))
+          if conn == sender                => name -> PrinterInstance(Some(config), Some(conn), status)
+        case (name, item: PrinterInstance) => name -> item
+      }
+      State(result)
+    }
+
     def withStatusUpdate(status: PrinterConnectionStatus, sender: ActorRef): State = {
       val result = printers map {
         case (name, PrinterInstance(desc, Some(conn), _))
@@ -94,7 +108,10 @@ object PrinterRegistryActor {
           if (newSettings.isDefined && currentPrinter.settings != newSettings) || (newStatus.isDefined && currentPrinter.status != newStatus) =>
           //TODO find some cleaner way how to detect update of status commands, when not settings left as is
           if (currentPrinter.connection.isDefined && newStatus.isDefined && currentPrinter.status != newStatus && !(newSettings.isDefined && currentPrinter.settings != newSettings)) {
-            currentPrinter.connection.get ! newStatus.get
+            newStatus.get match {
+              case status: PrinterConnectionStatus if status.text == "remove" => Logger.warn("got printer for delete")
+              case _                                                          => currentPrinter.connection.get ! newStatus.get
+            }
           }
           currentPrinter.withSettingsUpdate(context, newSettings).withStatus(newStatus)
         case _                                                                                                                                =>

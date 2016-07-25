@@ -1,7 +1,8 @@
 
 import akka.actor.{ActorContext, ActorRef}
 import protocols.demoport.DemoPort
-import protocols.serialport.SerialPort
+
+//import protocols.SerialPort.SerialPort
 
 /**
   * Created by Roman Potashow on 30.06.2016.

@@ -19,12 +19,13 @@ scalacOptions ++= Seq("-feature", " -deprecation")
 
 val akkaV = "2.4.8"
 val `odersky-flow` = "3.0.2"
+val diffsonV = "2.0.2"
 //main artifact Serial-port
 libraryDependencies += "ch.jodersky" %% "flow-core" % `odersky-flow`
 //"fat" jar containing native libraries
 libraryDependencies += "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime"
 
-libraryDependencies += "org.gnieh" %% "diffson" % "2.0.2"
+libraryDependencies += "org.gnieh" %% "diffson" % diffsonV
 libraryDependencies +=  "com.typesafe.akka" %% "akka-testkit" % akkaV
 
 //libraryDependencies += "com.github.pathikrit"  %% "better-files-akka"  % "2.16.0"

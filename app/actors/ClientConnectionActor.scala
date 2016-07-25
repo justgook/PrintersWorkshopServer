@@ -70,7 +70,6 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
           (newState, oldState) match {
             case (State(_, _, newPrinters), State(_, _, oldPrinters)) // Printer update from Client
               if newPrinters != oldPrinters =>
-              log.warning("ClientConnectionActor send update to PrinterRegistryActor")
               printers ! PrinterDataList(newPrinters)
           }
       }
