@@ -1,4 +1,4 @@
-GET         /socket        controllers.Application.socket
-POST        /upload        controllers.Application.upload
-
-
+GET         /socket        @controllers.Application.socket
+POST        /upload        @controllers.Application.upload
+GET         /              @controllers.Assets.at(path="/PrintersWorkshopUI-491e0cdc042cc46821152577acb167bd23abd63f", file="index.html")
+GET         /*file         @controllers.Assets.at(path="/PrintersWorkshopUI-491e0cdc042cc46821152577acb167bd23abd63f", file)
