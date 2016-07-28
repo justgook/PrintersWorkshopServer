@@ -11,8 +11,8 @@ scala:
   - 2.11.8
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y socat
+  - apt-get -qq update
+  - apt-get install -y socat
 script:
   - "sbt clean coverage test"
 after_success: "sbt coverageReport coveralls"
