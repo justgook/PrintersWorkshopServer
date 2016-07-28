@@ -11,11 +11,33 @@ import play.api.libs.json._
   */
 trait Connection extends Actor with ActorLogging {}
 
+//switch (value) {
+//case "connected":
+//return <Checkmark />;
+//case "ready":
+//return <DocumentVerified />;
+//case "printing":
+//return <Prining />;
+//case "editing":
+//return <Lock />;
+//case "updating":
+//case "reconnecting":
+//return <Spinning />;
+//case "no-сonfig":
+//return <NoConfig />;
+//case "pause":
+//return <Pause />;
+//default:
+//return null; //TODO set some default value
+
 
 object StatusText extends Enumeration {
   type StatusText = Value
   val Unknown    = Value("unknown")
+  val Remove     = Value("remove")
+  val Editing    = Value("editing")
   val Connecting = Value("connecting")
+
   val Connected  = Value("connected")
   val Ready      = Value("ready")
   val Printing   = Value("printing")
@@ -42,7 +64,7 @@ object Connection {
                      text: StatusText = Unknown,
                      file: Option[String] = None, //Change to FileLink
                      progress: Option[Progress] = None, //ReadOnly Data
-                     temperatures: List[Temperature] = List(Temperature()) //ReadOnly Data
+                     temperatures: Option[List[Temperature]] = None //ReadOnly Data
                    ) {
 
     def withFile(file: String) = copy(file = Some(file))

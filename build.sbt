@@ -32,9 +32,8 @@ libraryDependencies += "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime
 libraryDependencies += "org.gnieh" %% "diffson" % diffsonV
 libraryDependencies +=  "com.typesafe.akka" %% "akka-testkit" % akkaV
 
-//libraryDependencies += "com.github.pathikrit"  %% "better-files-akka"  % "2.16.0"
 
-libraryDependencies += "com.github.justgook" % "PrintersWorkshopUI" % "491e0cd" % "external->default" from "https://github.com/justgook/PrintersWorkshopUI/archive/491e0cd.zip" // todo: use some human-readable version
+libraryDependencies += "com.github.justgook" % "PrintersWorkshopUI" % "0.9.1" % "external->default" from "https://github.com/justgook/PrintersWorkshopUI/archive/0.9.1.zip"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
