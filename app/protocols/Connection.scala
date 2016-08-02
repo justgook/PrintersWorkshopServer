@@ -38,9 +38,9 @@ object StatusText extends Enumeration {
   val Editing    = Value("editing")
   val Connecting = Value("connecting")
 
-  val Connected  = Value("connected")
-  val Ready      = Value("ready")
-  val Printing   = Value("printing")
+  val Connected = Value("connected")
+  val Ready     = Value("ready")
+  val Printing  = Value("printing")
   implicit val StatusTextFormat = new Format[StatusText] {
     def writes(myEnum: StatusText) = JsString(myEnum.toString)
 
@@ -50,9 +50,6 @@ object StatusText extends Enumeration {
 
 object Connection {
 
-
-  import StatusText._
-
   implicit val configurationFormat = Json.format[Configuration]
   implicit val ProgressFormat      = Json.format[Progress]
   implicit val TemperatureFormat   = Json.format[Temperature]
@@ -60,19 +57,9 @@ object Connection {
 
   case class Configuration(name: String = "none", properties: Map[String, String] = Map.empty)
 
-  case class Status(
-                     text: StatusText = Unknown,
-                     file: Option[String] = None, //Change to FileLink
-                     progress: Option[Progress] = None, //ReadOnly Data
-                     temperatures: Option[List[Temperature]] = None //ReadOnly Data
-                   ) {
-
-    def withFile(file: String) = copy(file = Some(file))
-
-    def readyToPrint() = withText(Ready)
-
-    def withText(t: StatusText) = copy(text = t)
-  }
+  case class Status(progress: Option[Progress] = None, //ReadOnly Data
+                    temperatures: Option[List[Temperature]] = None //ReadOnly Data
+                   )
 
 
   case class Progress(done: Int, of: Int)

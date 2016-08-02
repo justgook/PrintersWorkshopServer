@@ -1,11 +1,10 @@
 package protocols.demoport
 
-import actors.PrinterRegistryActor.PrinterData
 import akka.actor.Props
 import play.api.Logger
 import protocols.Connection.{Progress, Status, Temperature}
 import protocols.Property._
-import protocols.{Connection, Protocol, Settings, StatusText}
+import protocols.{Connection, Protocol, Settings}
 
 /**
   * Created by Roman Potashow on 30.06.2016.
@@ -26,8 +25,6 @@ object DemoPort extends Protocol {
   class ConnectionActor(config: Connection.Configuration) extends Connection {
     val r      = scala.util.Random
     var status = Status(
-      text = StatusText.Connected,
-      file = Some("None"),
       progress = Some(Progress(done = 10, of = 300)),
       temperatures = Some(List(Temperature(data = List(
         100 + r.nextInt(110),
@@ -50,10 +47,10 @@ object DemoPort extends Protocol {
     context.parent ! status
 
     def receive = {
-      case PrinterData(n, _, _)                          => Logger.info(s"demoport got name - $n, when my $config")
-      case Status(_, Some(file), progress, temperatures) => //TODO add validation that printer-status not in printing state
-        status = status.withFile(file).readyToPrint()
-        context.parent ! status
+      //      case PrinterData(n, _, _)                          => Logger.info(s"demoport got name - $n, when my $config")
+      //      case Status(_, Some(file), progress, temperatures) => //TODO add validation that printer-status not in printing state
+      //        status = status.withFile(file).readyToPrint()
+      //        context.parent ! status
       case msg                                           => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
     }
   }

@@ -6,7 +6,8 @@ package actors
 
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
-import actors.PrinterRegistryActor.{PrinterData, PrinterDataList}
+import actors.PrinterConnectionRegistryActor.PrinterConnections
+import actors.PrinterSettingsRegistryActor.{Printer, Printers}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import gnieh.diffson.playJson._
 import play.api.libs.json.Reads._
@@ -18,7 +19,13 @@ import protocols.{Settings => ProtocolSettings}
 import scala.util.{Failure, Success, Try}
 
 
-class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef)
+class ClientConnectionActor(
+                             out: ActorRef,
+                             connectionRegistry: ActorRef,
+                             protocolSettings: ActorRef,
+                             printersSettings: ActorRef,
+                             printerConnections: ActorRef
+                           )
   extends Actor with ActorLogging with Stash {
 
   import ClientConnectionActor._
@@ -30,7 +37,8 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
   override def preStart: Unit = {
     connectionRegistry ! Subscribers.Add(self)
     protocolSettings ! Subscribers.Add(self)
-    printers ! Subscribers.Add(self)
+    printersSettings ! Subscribers.Add(self)
+    printerConnections ! Subscribers.Add(self)
   }
 
   def receive = stateBuffering
@@ -50,8 +58,10 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
     withDefaultMessages {
       case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
-      case PrinterDataList(p)       => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
+      case Printers(p)              => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
+      case PrinterConnections(c)    => log.warning("implement me PrinterConnections")
       case Update(_, _)             => stash()
+      case msg                      => log.warning(s"got unexpected $msg")
     }
   }
 
@@ -70,7 +80,9 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
           (newState, oldState) match {
             case (State(_, _, newPrinters), State(_, _, oldPrinters)) // Printer update from Client
               if newPrinters != oldPrinters =>
-              printers ! PrinterDataList(newPrinters)
+              printersSettings ! Printers(newPrinters)
+            case _                          => log.warning("something goes wrong in Update")
+
           }
       }
     case SettingsList(list)       =>
@@ -87,13 +99,15 @@ class ClientConnectionActor(out: ActorRef, connectionRegistry: ActorRef, protoco
         out ! Patch(revision, state, newState)
         state = newState
       }
-    case PrinterDataList(p)       =>
+    case Printers(p)              =>
       val newState = state.withPrinters(p)
       if (newState != state) {
         revision += 1
         out ! Patch(revision, state, newState)
         state = newState
       }
+    case PrinterConnections(list) =>
+      log.warning(s"got Status for printer $list")
   }
 
   def withDefaultMessages(fn: Receive): Receive = {
@@ -112,15 +126,15 @@ object ClientConnectionActor {
   implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
   implicit val stateFormat     = Json.format[State]
 
-  def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printers: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printers))
+  def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printersSettings: ActorRef, printersConnections: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printersSettings, printersConnections))
 
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
-  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: List[PrinterData] = List.empty) {
+  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty) {
     def withProtocols(p: List[ProtocolSettings]) = copy(protocols = p)
 
-    def withPrinters(p: List[PrinterData]) = copy(printers = p)
+    def withPrinters(p: Map[String, Printer]) = copy(printers = p)
 
     def withConnections(c: Int) = copy(connections = c)
 

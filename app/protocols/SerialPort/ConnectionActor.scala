@@ -4,8 +4,8 @@ import akka.actor.{ActorRef, Props, Terminated}
 import akka.io.IO
 import akka.util.ByteString
 import ch.jodersky.flow.{Parity, Serial, SerialSettings}
+import protocols.Connection
 import protocols.Connection.Status
-import protocols.{Connection, StatusText}
 
 import scala.util.Try
 
@@ -49,7 +49,7 @@ class ConnectionActor(config: Connection.Configuration) extends Connection {
 
 
   log.info(s"Requesting manager to open port: $port, baud: ${aSettings.baud}")
-  context.parent ! status.withText(StatusText.Connecting)
+  //  context.parent ! status.withText(StatusText.Connecting)
   IO(Serial) ! Serial.Open(port, aSettings)
 
   def receive = {
@@ -62,7 +62,7 @@ class ConnectionActor(config: Connection.Configuration) extends Connection {
       val operator = sender
       context become opened(operator)
       context watch operator
-      context.parent ! status.withText(StatusText.Connected)
+    //      context.parent ! status.withText(StatusText.Connected)
   }
 
   def opened(operator: ActorRef): Receive = {

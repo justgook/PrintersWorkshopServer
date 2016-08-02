@@ -19,12 +19,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 @Singleton
-class Application @Inject()
-(ws: WSClient)
-(@Named("ws-connection-registry") connectionRegistry: ActorRef)
-(@Named("protocol-registry") protocolsRegistryActor: ActorRef)
-(@Named("printers-registry") printers: ActorRef)
-(implicit system: ActorSystem, m: Materializer) extends Controller {
+class Application @Inject()(
+                             ws: WSClient,
+                             @Named("ws-connection-registry") connectionRegistry: ActorRef,
+                             @Named("protocol-registry") protocolsRegistryActor: ActorRef,
+                             @Named("printers-registry") printersSettings: ActorRef,
+                             @Named("printers-connections") printersConnections: ActorRef)
+                           (implicit system: ActorSystem, m: Materializer) extends Controller {
 
   val uploadService: UploadService = UploadService
 
@@ -38,7 +39,7 @@ class Application @Inject()
 
   def socket = WebSocket.accept[In, Out] { request =>
     ActorFlow actorRef { out =>
-      ClientConnectionActor.props(out, connectionRegistry, protocolsRegistryActor, printers)
+      ClientConnectionActor.props(out, connectionRegistry, protocolsRegistryActor, printersSettings, printersConnections)
     }
   }
 
