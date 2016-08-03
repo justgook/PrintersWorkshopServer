@@ -13,6 +13,7 @@ import gnieh.diffson.playJson._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
+import protocols.Connection.Status
 import protocols.Protocol.SettingsList
 import protocols.{Settings => ProtocolSettings}
 
@@ -30,7 +31,6 @@ class ClientConnectionActor(
 
   import ClientConnectionActor._
 
-  //TODO don't increment revision for read only data - otherwhise there will not abele to send updates / stay in sync with server
   private var revision = 1
   private var state    = State()
 
@@ -46,9 +46,10 @@ class ClientConnectionActor(
   def stateBuffering: Receive = {
     var gotSettings = false
     var gotConnection = false
-    var gotPrinters = false
+    var gotPrintersSettings = false
+    var gotPrintersConnections = false
     def checkBuffer(state: State): State = {
-      if (gotSettings && gotConnection && gotPrinters) {
+      if (gotSettings && gotConnection && gotPrintersSettings && gotPrintersConnections) {
         out ! SetState(revision, state)
         unstashAll()
         context.become(standard)
@@ -58,8 +59,8 @@ class ClientConnectionActor(
     withDefaultMessages {
       case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
-      case Printers(p)              => gotPrinters = true; state = checkBuffer(state.withPrinters(p))
-      case PrinterConnections(c)    => log.warning("implement me PrinterConnections")
+      case Printers(p)              => gotPrintersSettings = true; state = checkBuffer(state.withPrinters(p))
+      case PrinterConnections(c)    => gotPrintersConnections = true; state = checkBuffer(state.withConditions(c))
       case Update(_, _)             => stash()
       case msg                      => log.warning(s"got unexpected $msg")
     }
@@ -78,7 +79,7 @@ class ClientConnectionActor(
           state = newState
           revision = rev
           (newState, oldState) match {
-            case (State(_, _, newPrinters), State(_, _, oldPrinters)) // Printer update from Client
+            case (State(_, _, newPrinters, _), State(_, _, oldPrinters, _)) // Printer update from Client
               if newPrinters != oldPrinters =>
               printersSettings ! Printers(newPrinters)
             case _                          => log.warning("something goes wrong in Update")
@@ -107,12 +108,17 @@ class ClientConnectionActor(
         state = newState
       }
     case PrinterConnections(list) =>
-      log.warning(s"got Status for printer $list")
+      val newState = state.withConditions(list)
+      if (newState != state) {
+        // not update revision for readOnly data
+        out ! Patch(revision, state, newState)
+        state = newState
+      }
   }
 
   def withDefaultMessages(fn: Receive): Receive = {
     case Ping       => out ! Pong
-    case Reset      => out ! SetState(revision, state) // TODO add request to update from all registry (connectionRegistry, protocolSettings, printers)
+    case Reset      => out ! SetState(revision, state)
     case Unknown(t) => out ! Fail(Fail.Status.UNKNOWN_MESSAGE)
     case other      => fn(other)
   }
@@ -131,12 +137,14 @@ object ClientConnectionActor {
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
-  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty) {
+  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty, conditions: Map[String, Status] = Map.empty) {
     def withProtocols(p: List[ProtocolSettings]) = copy(protocols = p)
 
     def withPrinters(p: Map[String, Printer]) = copy(printers = p)
 
     def withConnections(c: Int) = copy(connections = c)
+
+    def withConditions(c: Map[String, Status]) = copy(conditions = c)
 
     def withPatch(p: JsonPatch): Try[State] = Try(p(this))
   }
@@ -167,7 +175,7 @@ object ClientConnectionActor {
           case "update" => JsSuccess(Update(revision = (json \ "revision").as[Int], patch = read[JsonPatch].get))
           case "ping"   => JsSuccess(Ping)
           case "reset"  => JsSuccess(Reset)
-          case t        => JsSuccess(Unknown(t)) // TODO change it to JsError and find way how send it to client .fold()
+          case t        => JsSuccess(Unknown(t))
         }
       }
     }
