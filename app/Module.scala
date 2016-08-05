@@ -1,4 +1,4 @@
-import actors.{ClientConnectionRegistryActor, PrinterConnectionRegistryActor, PrinterSettingsRegistryActor}
+import actors.{ClientConnectionRegistryActor, FileRegistryActor, PrinterConnectionRegistryActor, PrinterSettingsRegistryActor}
 import com.google.inject.AbstractModule
 import play.api.libs.concurrent.AkkaGuiceSupport
 import protocols.ProtocolsRegistryActor
@@ -12,5 +12,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActor[ProtocolsRegistryActor]("protocol-registry")
     bindActor[PrinterSettingsRegistryActor]("printers-registry")
     bindActor[PrinterConnectionRegistryActor]("printers-connections")
+    bindActor[FileRegistryActor]("file-registry")
+
   }
 }

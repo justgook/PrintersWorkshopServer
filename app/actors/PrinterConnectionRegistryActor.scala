@@ -3,7 +3,7 @@ package actors
 import javax.inject.Named
 
 import actors.PrinterConnectionRegistryActor.PrinterConnections
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import com.google.inject.Inject
 import protocols.Connection.{Configuration, Status}
 import protocols.StatusText
@@ -24,8 +24,12 @@ class PrinterConnectionRegistryActor @Inject()
       val ref = protocols.connect(config, context)
       context watch ref
       connections += ref -> (name, Status())
-
       log.info(s"got request to connect $name with settings $config")
+    case (name: String, PoisonPill)            =>
+      connections.find((p) => p._2._1 == name) match {
+        case Some(c) => c._1 ! PoisonPill
+        case None    => log.warning(s"no connection for printer '$name'")
+      }
     case status: Status                        =>
       val ref = sender()
       connections.get(ref) match {
@@ -35,6 +39,11 @@ class PrinterConnectionRegistryActor @Inject()
           printersSettings ! (tuple._1, StatusText.Connected)
         case None        => log.warning(s"got status update from deleted connection")
       }
+      subscribers.route(PrinterConnections(connections.values.toMap[String, Status]), self)
+
+    case Terminated(connection) if connections contains connection =>
+      log.info(s"removing connection $connection")
+      connections -= connection
       subscribers.route(PrinterConnections(connections.values.toMap[String, Status]), self)
     case msg                                   => log.warning(s"got $msg")
   }

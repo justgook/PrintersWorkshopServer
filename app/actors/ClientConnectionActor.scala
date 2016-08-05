@@ -25,7 +25,8 @@ class ClientConnectionActor(
                              connectionRegistry: ActorRef,
                              protocolSettings: ActorRef,
                              printersSettings: ActorRef,
-                             printerConnections: ActorRef
+                             printerConnections: ActorRef,
+                             fileRegistry: ActorRef
                            )
   extends Actor with ActorLogging with Stash {
 
@@ -39,6 +40,7 @@ class ClientConnectionActor(
     protocolSettings ! Subscribers.Add(self)
     printersSettings ! Subscribers.Add(self)
     printerConnections ! Subscribers.Add(self)
+    fileRegistry ! Subscribers.Add(self)
   }
 
   def receive = stateBuffering
@@ -132,7 +134,15 @@ object ClientConnectionActor {
   implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
   implicit val stateFormat     = Json.format[State]
 
-  def props(out: ActorRef, connectionRegistry: ActorRef, protocolSettings: ActorRef, printersSettings: ActorRef, printersConnections: ActorRef) = Props(new ClientConnectionActor(out, connectionRegistry, protocolSettings, printersSettings, printersConnections))
+  def props(
+             out: ActorRef,
+             connectionRegistry: ActorRef,
+             protocolSettings: ActorRef,
+             printersSettings: ActorRef,
+             printersConnections: ActorRef,
+             fileRegistry: ActorRef)
+  = Props(
+    new ClientConnectionActor(out, connectionRegistry, protocolSettings, printersSettings, printersConnections, fileRegistry))
 
   sealed trait Message
   sealed trait In extends Message

@@ -49,7 +49,8 @@ object StatusText extends Enumeration {
 }
 
 object Connection {
-
+  //  sealed trait Command
+  //  object Kill extends Command
   implicit val configurationFormat = Json.format[Configuration]
   implicit val ProgressFormat      = Json.format[Progress]
   implicit val TemperatureFormat   = Json.format[Temperature]

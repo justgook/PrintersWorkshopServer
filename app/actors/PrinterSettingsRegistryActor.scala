@@ -3,7 +3,7 @@ package actors
 
 import javax.inject.{Inject, Named}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import play.api.libs.json._
 import protocols.Connection.Configuration
 import protocols.StatusText
@@ -35,7 +35,8 @@ class PrinterSettingsRegistryActor @Inject()
               printers += name -> printer
             case Some(oPrinter: ConfiguredPrinter)                     =>
               log.info(s"downgrade ConfiguredPrinter -> NewPrinter $name")
-              printers += name -> printer
+              printers += name -> NewPrinter(StatusText.Unknown)
+              printersConnections ! (name, PoisonPill)
             case None                                                  =>
               log.info(s"NewPrinter with name $name")
               printers += name -> printer
@@ -93,8 +94,8 @@ object PrinterSettingsRegistryActor {
       }
 
       override def reads(json: JsValue): JsResult[Printer] = {
-        json \ "settings" match {
-          case settings: JsDefined => json.validate[ConfiguredPrinter]
+        json \ "settings" \ "properties" match {
+          case p: JsDefined        => json.validate[ConfiguredPrinter]
           case _                   => json.validate[NewPrinter]
         }
 

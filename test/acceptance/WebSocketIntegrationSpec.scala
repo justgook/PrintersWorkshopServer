@@ -153,6 +153,25 @@ class WebSocketIntegrationSpec
       socket.disconnect()
     }
 
+    "remove printer status if connection changed to none" in new ClientState {
+      val probe2 = TestProbe()
+      socket.connect()
+      stateProbe.expectInitialState()
+      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) =>
+          (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined] && (state \ "printers" \ "Test Printer" \ "status").asOpt[String].contains("connected")
+        case _                      => false
+      }
+      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"none"}}}]""").as[JsArray])
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) =>
+          (state \ "conditions" \ "Test Printer").isInstanceOf[JsUndefined]
+        case _                      => false
+      }
+      socket.disconnect()
+    }
+
     //    "update printer name" in new ClientState {
     //      socket.connect()
     //      stateProbe.expectInitialState()
@@ -201,6 +220,8 @@ class WebSocketIntegrationSpec
       }
       socket.disconnect()
     }
+
+
     //    "connect to serial port" in new ClientState {
     //      socket.connect()
     //      stateProbe.expectInitialState()

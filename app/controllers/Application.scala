@@ -24,6 +24,7 @@ class Application @Inject()(
                              @Named("ws-connection-registry") connectionRegistry: ActorRef,
                              @Named("protocol-registry") protocolsRegistryActor: ActorRef,
                              @Named("printers-registry") printersSettings: ActorRef,
+                             @Named("file-registry") fileRegistry: ActorRef,
                              @Named("printers-connections") printersConnections: ActorRef)
                            (implicit system: ActorSystem, m: Materializer) extends Controller {
 
@@ -39,7 +40,14 @@ class Application @Inject()(
 
   def socket = WebSocket.accept[In, Out] { request =>
     ActorFlow actorRef { out =>
-      ClientConnectionActor.props(out, connectionRegistry, protocolsRegistryActor, printersSettings, printersConnections)
+      ClientConnectionActor.props(
+        out,
+        connectionRegistry,
+        protocolsRegistryActor,
+        printersSettings,
+        printersConnections,
+        fileRegistry
+      )
     }
   }
 
