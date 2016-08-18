@@ -1,10 +1,11 @@
 #GET         /proxy        @controllers.Application.proxy(url)
 
 
-GET         /socket          @controllers.Application.socket
-POST        /upload          @controllers.Application.upload
-GET         /                @controllers.Assets.at(path="/PrintersWorkshopUI-0.9.1", file="index.html")
-GET         /index.js        @controllers.Application.proxyIndexJs(url = "index.js")
-GET         /*file           @controllers.Assets.at(path="/PrintersWorkshopUI-0.9.1", file)
+GET         /socket              @controllers.Application.socket
+GET         /socket/:name        @controllers.Application.terminalSocket(name)
+POST        /upload              @controllers.Application.upload
+GET         /                    @controllers.Assets.at(path="/PrintersWorkshopUI-0.9.1", file="index.html")
+GET         /index.js            @controllers.Application.proxyIndexJs(url = "index.js")
+GET         /*file               @controllers.Assets.at(path="/PrintersWorkshopUI-0.9.1", file)
 
 

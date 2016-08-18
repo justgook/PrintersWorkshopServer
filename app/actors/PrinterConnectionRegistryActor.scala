@@ -2,11 +2,10 @@ package actors
 
 import javax.inject.Named
 
-import actors.PrinterConnectionRegistryActor.PrinterConnections
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import com.google.inject.Inject
-import protocols.Connection.{Configuration, Status}
-import protocols.StatusText
+import protocols.Connection.Status
+import protocols.{Configuration, StatusText}
 
 /**
   * Created by Roman Potashow on 02.08.2016.
@@ -14,12 +13,20 @@ import protocols.StatusText
 class PrinterConnectionRegistryActor @Inject()
 (@Named("printers-registry") printersSettings: ActorRef)
   extends Actor with ActorLogging with Subscribers {
+
+  import actors.PrinterConnectionRegistryActor._
   log.info("PrinterConnectionRegistryActor Created")
   private var connections: Map[ActorRef, (String, Status)] = Map.empty
 
   override def afterAdd(client: ActorRef) = client ! PrinterConnections(connections.values.toMap[String, Status])
 
   def receive = withSubscribers {
+    case DirectConnection(name: String) =>
+      connections.find((p) => p._2._1 == name) match {
+        case Some(c) => sender() ! c._1
+        case None    => sender() ! None //log.warning(s"no connection for printer '$name'")
+      }
+
     case (name: String, config: Configuration) =>
       val ref = protocols.connect(config, context)
       context watch ref
@@ -51,4 +58,5 @@ class PrinterConnectionRegistryActor @Inject()
 object PrinterConnectionRegistryActor {
   def props: Props = Props[PrinterConnectionRegistryActor]
   case class PrinterConnections(list: Map[String, Status])
+  case class DirectConnection(name: String)
 }

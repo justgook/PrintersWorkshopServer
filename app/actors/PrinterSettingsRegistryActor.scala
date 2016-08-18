@@ -5,9 +5,8 @@ import javax.inject.{Inject, Named}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import play.api.libs.json._
-import protocols.Connection.Configuration
-import protocols.StatusText
 import protocols.StatusText.StatusText
+import protocols.{Configuration, StatusText}
 
 /**
   * Created by Roman Potashow on 26.06.2016.

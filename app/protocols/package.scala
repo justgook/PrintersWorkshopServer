@@ -1,21 +1,51 @@
-
 import akka.actor.{ActorContext, ActorRef}
+import play.api.libs.json._
+import protocols.SerialPort._
 import protocols.demoport.DemoPort
+import protocols.demoport.DemoPort.DemoPortConfiguration
 
-//import protocols.SerialPort.SerialPort
 
 /**
   * Created by Roman Potashow on 30.06.2016.
   */
-package object protocols {
-  // TODO change to Actor that will react on Settings changes and put that list inside it as tuples of Optional[Watcher] + Optional[Setting]
-  var settings = List(DemoPort.settings)
 
-  def connect(config: Connection.Configuration, context: ActorContext): ActorRef = config match {
-    case Connection.Configuration("serialport", _) =>
+package object protocols {
+
+  implicit val configurationFormat = new Format[Configuration] {
+
+    override def writes(o: Configuration): JsValue = {
+      def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
+      val (name: String, props) = o match {
+        case config: SerialPortConfiguration => ("serialport", Some(write(config)))
+        case config: DemoPortConfiguration   => ("demoport", None)
+      }
+      Json.obj("name" -> name) ++ {
+        props.map(data => Json.obj("properties" -> data)) getOrElse Json.obj("properties" -> Json.obj())
+      }
+    }
+
+
+    override def reads(json: JsValue): JsResult[Configuration] = {
+      def read[T: Reads] = implicitly[Reads[T]].reads((json \ "properties").get)
+      (json \ "name").as[String] match {
+        case "serialport" => read[SerialPortConfiguration]
+        case "demoport"   => read[DemoPortConfiguration]
+        case _            => JsError()
+      }
+
+    }
+
+  }
+  // TODO change to Actor that will react on Settings changes and put that list inside it as tuples of Optional[Watcher] + Optional[Setting]
+  var settings = List(DemoPort.settings, SerialPort.settings)
+
+  def connect(config: Configuration, context: ActorContext): ActorRef = config match {
+    case config: SerialPortConfiguration =>
       context.actorOf(SerialPort.ConnectionActor.props(config = config))
-    case Connection.Configuration("demoport", _)   =>
+    case config: DemoPortConfiguration   =>
       context.actorOf(DemoPort.ConnectionActor.props(config = config))
     //    case msg => Logger.warn(s"connect(${this.getClass.getName}) unknown connection type '${config.name}'");
   }
+  trait Configuration
+
 }

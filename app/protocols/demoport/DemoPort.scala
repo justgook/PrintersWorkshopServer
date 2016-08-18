@@ -1,10 +1,11 @@
 package protocols.demoport
 
-import akka.actor.Props
+import akka.actor.{ActorRef, Props}
 import play.api.Logger
+import play.api.libs.json.Json
 import protocols.Connection.{Progress, Status, Temperature}
 import protocols.Property._
-import protocols.{Connection, Protocol, Settings}
+import protocols.{Configuration, Connection, Protocol, Settings}
 
 /**
   * Created by Roman Potashow on 30.06.2016.
@@ -22,7 +23,8 @@ object DemoPort extends Protocol {
     `select-string`(name = "demo-select-string", label = "Select letter", enum = List("a", "b"), defaultValue = Some("b"))
   ))
 
-  class ConnectionActor(config: Connection.Configuration) extends Connection {
+  class ConnectionActor extends Connection {
+
     val r      = scala.util.Random
     var status = Status(
       progress = Some(Progress(done = 10, of = 300)),
@@ -44,6 +46,10 @@ object DemoPort extends Protocol {
       ))))
     )
 
+    override def afterAdd(client: ActorRef): Unit = {
+      subscribers.route("ConnectionCountUpdate(subscribers.routees.size)", self)
+    }
+
     context.parent ! status
 
     def receive = {
@@ -51,12 +57,15 @@ object DemoPort extends Protocol {
       //      case Status(_, Some(file), progress, temperatures) => //TODO add validation that printer-status not in printing state
       //        status = status.withFile(file).readyToPrint()
       //        context.parent ! status
-      case msg                                           => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
+      case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
     }
   }
-
+  case class DemoPortConfiguration(`demo-select-string`: String) extends Configuration
   object ConnectionActor {
-    def props(config: Connection.Configuration) = Props(new ConnectionActor(config))
+    def props(config: DemoPortConfiguration) = Props(new ConnectionActor())
+  }
+  object DemoPortConfiguration {
+    implicit val demoPortConfigurationFormat = Json.format[DemoPortConfiguration]
   }
 
 }

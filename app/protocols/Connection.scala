@@ -1,6 +1,7 @@
 package protocols
 
 
+import actors.Subscribers
 import akka.actor.{Actor, ActorLogging}
 import play.api.libs.json._
 
@@ -9,7 +10,7 @@ import play.api.libs.json._
 /**
   * Created by Roman Potashow on 30.06.2016.
   */
-trait Connection extends Actor with ActorLogging {}
+trait Connection extends Actor with ActorLogging with Subscribers {}
 
 //switch (value) {
 //case "connected":
@@ -51,20 +52,17 @@ object StatusText extends Enumeration {
 object Connection {
   //  sealed trait Command
   //  object Kill extends Command
-  implicit val configurationFormat = Json.format[Configuration]
-  implicit val ProgressFormat      = Json.format[Progress]
-  implicit val TemperatureFormat   = Json.format[Temperature]
-  implicit val StatusFormat        = Json.format[Status]
-
-  case class Configuration(name: String = "none", properties: Map[String, String] = Map.empty)
-
+  //  implicit val configurationFormat = Json.format[Configuration]
+  implicit val progressFormat    = Json.format[Progress]
+  implicit val temperatureFormat = Json.format[Temperature]
+  implicit val statusFormat      = Json.format[Status]
+  case class ConsoleInput(in: String)
   case class Status(progress: Option[Progress] = None, //ReadOnly Data
                     temperatures: Option[List[Temperature]] = None //ReadOnly Data
                    )
-
-
   case class Progress(done: Int, of: Int)
   case class Temperature(name: String = "unknown", data: List[Int] = List())
-  //State definition
-
+  //  object ConsoleInput {
+  //    implicit val consoleInputReads = Json.format[ConsoleInput]
+  //  }
 }

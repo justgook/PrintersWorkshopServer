@@ -108,7 +108,7 @@ class WebSocketIntegrationSpec
       socket.connect()
       probe.expectMsg(Connecting)
       probe.expectMsg(Connected)
-      socket.send("""{"type":"update", "revision": 2, "args":[{"op":"replace","path":"/printers/1","value":{"name":"Test Printer", "settings":{"name":"demoport","properties":{} }}}]}""")
+      socket.send("""{"type":"update", "revision": 2, "args":[{"op":"replace","path":"/printers/1","value":{"name":"Test Printer", "settings":{"name":"demoport","properties":{"demo-select-string":""} }}}]}""")
       probe.fishForMessage(/*max = 100.millis,*/ hint = "fail not received") {
         case TextMessage(str) if str.startsWith( """{"type":"fail"""") => true
         case _                                                         => false
@@ -145,7 +145,7 @@ class WebSocketIntegrationSpec
       socket.connect()
       stateProbe.expectInitialState()
       //          {"type":"update","revision":4,"args":[{"op":"add","path":"/printers/432423/settings","value":{"name":"demoport","properties":{"demo-select-string":"b"}}}]}
-      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"demoport","properties":{"demo-select-string":""} }}}]""").as[JsArray])
       stateProbe.fishForMessage(hint = "printers status not got") {
         case (state: JsObject, rev) => (state \ "printers" \ "Test Printer" \ "status").asOpt[String].contains("connected")
         case _                      => false
@@ -157,7 +157,7 @@ class WebSocketIntegrationSpec
       val probe2 = TestProbe()
       socket.connect()
       stateProbe.expectInitialState()
-      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"demoport","properties":{} }}}]""").as[JsArray])
+      sendUpdate(Json.parse("""[{"op":"add","path":"/printers/Test Printer","value":{"status":"unknown","settings":{"name":"demoport","properties":{"demo-select-string":""} }}}]""").as[JsArray])
       stateProbe.fishForMessage(hint = "printers status not got") {
         case (state: JsObject, rev) =>
           (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined] && (state \ "printers" \ "Test Printer" \ "status").asOpt[String].contains("connected")

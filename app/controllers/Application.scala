@@ -6,8 +6,8 @@ package controllers
 
 import javax.inject._
 
-import actors.ClientConnectionActor
 import actors.ClientConnectionActor._
+import actors.{ClientConnectionActor, TerminalWebSocketActor}
 import akka.actor._
 import akka.stream._
 import play.api.libs.streams._
@@ -50,6 +50,11 @@ class Application @Inject()(
       )
     }
   }
+
+  def terminalSocket(name: String) = WebSocket.accept[String, String] { request => //TODO replace input to ConsoleInput
+    ActorFlow.actorRef(out => TerminalWebSocketActor.props(out, name, printersConnections))
+  }
+
 
   def upload = Action(parse.multipartFormData) { implicit request =>
     val result = uploadService.uploadFile(request)

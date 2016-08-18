@@ -6,6 +6,7 @@ package actors
 
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
+import actors.FileRegistryActor.{File, Files}
 import actors.PrinterConnectionRegistryActor.PrinterConnections
 import actors.PrinterSettingsRegistryActor.{Printer, Printers}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
@@ -50,8 +51,9 @@ class ClientConnectionActor(
     var gotConnection = false
     var gotPrintersSettings = false
     var gotPrintersConnections = false
+    var gotFiles = false
     def checkBuffer(state: State): State = {
-      if (gotSettings && gotConnection && gotPrintersSettings && gotPrintersConnections) {
+      if (gotSettings && gotConnection && gotPrintersSettings && gotPrintersConnections && gotFiles) {
         out ! SetState(revision, state)
         unstashAll()
         context.become(standard)
@@ -63,6 +65,7 @@ class ClientConnectionActor(
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
       case Printers(p)              => gotPrintersSettings = true; state = checkBuffer(state.withPrinters(p))
       case PrinterConnections(c)    => gotPrintersConnections = true; state = checkBuffer(state.withConditions(c))
+      case Files(f)                 => gotFiles = true; state = checkBuffer(state.withFiles(f))
       case Update(_, _)             => stash()
       case msg                      => log.warning(s"got unexpected $msg")
     }
@@ -81,7 +84,7 @@ class ClientConnectionActor(
           state = newState
           revision = rev
           (newState, oldState) match {
-            case (State(_, _, newPrinters, _), State(_, _, oldPrinters, _)) // Printer update from Client
+            case (State(_, _, newPrinters, _, _), State(_, _, oldPrinters, _, _)) // Printer update from Client
               if newPrinters != oldPrinters =>
               printersSettings ! Printers(newPrinters)
             case _                          => log.warning("something goes wrong in Update")
@@ -147,7 +150,7 @@ object ClientConnectionActor {
   sealed trait Message
   sealed trait In extends Message
   sealed trait Out extends Message
-  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty, conditions: Map[String, Status] = Map.empty) {
+  case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty, conditions: Map[String, Status] = Map.empty, files: List[File] = List.empty) {
     def withProtocols(p: List[ProtocolSettings]) = copy(protocols = p)
 
     def withPrinters(p: Map[String, Printer]) = copy(printers = p)
@@ -155,6 +158,8 @@ object ClientConnectionActor {
     def withConnections(c: Int) = copy(connections = c)
 
     def withConditions(c: Map[String, Status]) = copy(conditions = c)
+
+    def withFiles(f: List[File]) = copy(files = f)
 
     def withPatch(p: JsonPatch): Try[State] = Try(p(this))
   }
