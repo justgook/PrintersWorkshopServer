@@ -51,7 +51,7 @@ class Application @Inject()(
     }
   }
 
-  def terminalSocket(name: String) = WebSocket.accept[String, String] { request => //TODO replace input to ConsoleInput
+  def terminalSocket(name: String) = WebSocket.accept[String, String] { request =>
     ActorFlow.actorRef(out => TerminalWebSocketActor.props(out, name, printersConnections))
   }
 

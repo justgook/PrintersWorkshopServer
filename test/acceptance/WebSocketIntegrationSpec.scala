@@ -222,17 +222,36 @@ class WebSocketIntegrationSpec
     }
 
 
-    //    "connect to serial port" in new ClientState {
-    //      socket.connect()
-    //      stateProbe.expectInitialState()
-    //      withSerialPortPrinter()
-    //      stateProbe.fishForMessage(hint = "printer 0 status never updated") {
-    //        case (state: JsObject, rev) => (for {statusText <- (state \ "printers" \ 0 \ "status" \ "text").asOpt[String] if statusText == "ready"} yield true) getOrElse false
-    //        case _                      => false
-    //      }
-    //      socket.disconnect()
-    //    }
-
+    "connect to serial port" in new ClientState {
+      socket.connect()
+      stateProbe.expectInitialState()
+      withSerialPortPrinter("Test Printer")
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) =>
+          (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined]
+        case _                      => false
+      }
+      socket.disconnect()
+    }
+    "connect to serial port and open direct communication" in new ClientState {
+      socket.connect()
+      stateProbe.expectInitialState()
+      withSerialPortPrinter("123")
+      stateProbe.fishForMessage(hint = "printers status not got") {
+        case (state: JsObject, rev) =>
+          (state \ "conditions" \ "123").isInstanceOf[JsDefined]
+        case _                      => false
+      }
+      socket.disconnect()
+      val probe2  = TestProbe()
+      val socket2 = WebSocketClient(new URI(s"ws://localhost:$port/socket/123"), probe2)
+      socket2.connect()
+      probe2.fishForMessage(hint = "No CONNECTED message") {
+        case TextMessage("CONNECTED") => true
+        case _                        => false
+      }
+      socket2.disconnect()
+    }
   }
 
   trait TestProbeScope {
@@ -241,7 +260,6 @@ class WebSocketIntegrationSpec
   }
 
   trait ClientState {
-    //TODO update it to proxy
     val stateProbe = new TestProbe(system) {
       def expectInitialState() = {
         fishForMessage(hint = "state not got") {
@@ -262,13 +280,10 @@ class WebSocketIntegrationSpec
     val client = system.actorOf(StateObserver.props(stateProbe))
     val socket = WebSocketClient(new URI(s"ws://localhost:$port/socket"), client)
 
-    //    def withSerialPortPrinter(name: String = "Test Printer"): Unit = {
-    //      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/-","value":{"name":"$name", "settings":{"name":"serialport","properties":{} }}}]""").as[JsArray])
-    //      stateProbe.fishForMessage(hint = "printers status not got") {
-    //        case (state: JsObject, rev) => (state \ "printers" \ 0 \ "status").isInstanceOf[JsDefined] // TODO update to searching by name
-    //        case _                      => false
-    //      }
-    //    }
+    def withSerialPortPrinter(name: String = "Test Printer"): Unit = {
+      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/$name","value":{"status":"unknown"}}]""").as[JsArray])
+      sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/$name/settings","value":{"name":"serialport","properties":{"port":"/tmp/a","baud":115200,"cs":8,"tsb":false,"parity":0}}}]""").as[JsArray])
+    }
 
     def withPrinter(name: String = "Test Printer"): Unit = {
       sendUpdate(Json.parse(s"""[{"op":"add","path":"/printers/$name","value":{"status":"unknown"}}]""").as[JsArray])
@@ -286,15 +301,6 @@ class WebSocketIntegrationSpec
       }
     }
 
-    //TODO update to indexing by name, no by index
-    //    def deletePrinter(index: Int = 0) = {
-    //      sendUpdate(Json.parse(s"""[{"op":"remove","path":"/printers/$index"}]""").as[JsArray])
-    //      stateProbe.fishForMessage(hint = "printers array not empty") {
-    //        //TODO add validtion that printer is gone, not all printers are deleted
-    //        case (state: JsObject, rev) => (for {size <- (state \ "printers").asOpt[JsArray].map(_.value.size) if size == 0} yield true) getOrElse false //.isInstanceOf[JsDefined]
-    //        case _                      => false
-    //      }
-    //    }
   }
 
 }
