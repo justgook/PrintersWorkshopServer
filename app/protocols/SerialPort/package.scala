@@ -11,7 +11,7 @@ package object SerialPort
   extends Protocol {
   val name     = "serialport"
   var settings = Settings(name = name, label = "Serial Port", properties = List(
-    `select-string`(name = "port", label = "Device", enum = List("/dev/ttys004", "COM1", "COM2", "COM3", "COM4"), defaultValue = Some("/dev/ttys004")),
+    `select-string`(name = "port", label = "Device", enum = List("/tmp/a", "/tmp/b", "COM1", "COM2", "COM3", "COM4"), defaultValue = Some("/tmp/a")),
     `int`(name = "baud", label = "Baud rate", defaultValue = 115200),
     `int`(name = "cs", label = "Char size", defaultValue = 8),
     `bool`(name = "tsb", label = "Use two stop bits", defaultValue = false),

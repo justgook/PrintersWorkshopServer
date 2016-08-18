@@ -3,7 +3,8 @@ package actors
 
 import javax.inject.{Inject, Named}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
+import akka.actor.{ActorLogging, ActorRef, PoisonPill, Props}
+import akka.persistence._
 import play.api.libs.json._
 import protocols.StatusText.StatusText
 import protocols.{Configuration, StatusText}
@@ -14,15 +15,30 @@ import protocols.{Configuration, StatusText}
 //TODO add way to save and store on restart Application
 class PrinterSettingsRegistryActor @Inject()
 (@Named("printers-connections") printersConnections: ActorRef) //TODO find way how move that part to Module.scala
-  extends Actor with ActorLogging with Subscribers {
+  extends PersistentActor with ActorLogging with Subscribers {
 
   import actors.PrinterSettingsRegistryActor._
 
   private var printers: Map[String, Printer] = Map.empty
 
+  def persistenceId: String = "PrinterSettingsRegistryActor"
+
   override def afterAdd(client: ActorRef) = client ! Printers(list = printers)
 
-  def receive = withSubscribers {
+  def receiveRecover = {
+    case SnapshotOffer(metadata, snapshot) =>
+      println("offered state = " + snapshot)
+
+    case evt: String =>
+      log.warning("implement me")
+
+  }
+
+  def receiveCommand = withSubscribers {
+
+    case SaveSnapshotSuccess(metadata)         => log.info(s"SaveSnapshotSuccess, $metadata")
+    case SaveSnapshotFailure(metadata, reason) => log.info(s"SaveSnapshotFailure $reason")
+
     case Printers(list)                     =>
       list.foreach {
         case (name, printer: NewPrinter)        =>
@@ -57,6 +73,9 @@ class PrinterSettingsRegistryActor @Inject()
               printers += name -> printer
           }
       }
+      saveSnapshot(printers.toString()) // TODO update some normal serialization
+      log.info(s"${printers.keys.toString()}")
+
       subscribers.route(Printers(list = printers), self)
     case (name: String, status: StatusText) =>
       printers.get(name) match {
@@ -94,8 +113,8 @@ object PrinterSettingsRegistryActor {
 
       override def reads(json: JsValue): JsResult[Printer] = {
         json \ "settings" \ "properties" match {
-          case p: JsDefined        => json.validate[ConfiguredPrinter]
-          case _                   => json.validate[NewPrinter]
+          case p: JsDefined => json.validate[ConfiguredPrinter]
+          case _            => json.validate[NewPrinter]
         }
 
       }

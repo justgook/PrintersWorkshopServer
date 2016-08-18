@@ -27,7 +27,7 @@ class ConnectionActor(config: SerialPortConfiguration) extends Connection {
 
   override def afterAdd(client: ActorRef): Unit = {
     log.info("got direct connection")
-    subscribers.route("ConnectionCountUpdate(subscribers.routees.size)", self)
+    subscribers.route("CONNECTED", self)
   }
 
   //  override def afterTerminated(subscriber: ActorRef): Unit = {
