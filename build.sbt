@@ -22,6 +22,8 @@ libraryDependencies ++= Seq(
 )
 scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
 
+javaOptions in Test += "-Dconfig.file=test/resources/test.conf"
+
 val akkaV = "2.4.8"
 val `odersky-flow` = "3.0.2"
 val diffsonV = "2.0.2"

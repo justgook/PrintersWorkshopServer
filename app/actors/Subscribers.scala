@@ -15,13 +15,13 @@ trait Subscribers {
 
   private def receiveExtend: Receive = {
     case Subscribers.Add(subscriber)                                                       =>
-      log.debug(s"${self.path.name}(${this.getClass.getName}) got new subscriber")
+      log.debug("{}({}) got new subscriber", self.path.name, this.getClass.getName)
       context watch subscriber
       subscribers = subscribers.removeRoutee(subscriber)
       subscribers = subscribers.addRoutee(subscriber)
       afterAdd(subscriber)
     case Terminated(subscriber) if subscribers.routees contains ActorRefRoutee(subscriber) =>
-      log.debug(s"${self.path.name}(${this.getClass.getName}) delete subscriber")
+      log.debug(s"{}({}) delete subscriber", self.path.name, this.getClass.getName)
       subscribers = subscribers.removeRoutee(subscriber)
       afterTerminated(subscriber)
   }

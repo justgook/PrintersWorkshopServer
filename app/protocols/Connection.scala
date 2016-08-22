@@ -62,7 +62,4 @@ object Connection {
                    )
   case class Progress(done: Int, of: Int)
   case class Temperature(name: String = "unknown", data: List[Int] = List())
-  //  object ConsoleInput {
-  //    implicit val consoleInputReads = Json.format[ConsoleInput]
-  //  }
 }

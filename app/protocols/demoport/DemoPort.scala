@@ -46,6 +46,7 @@ object DemoPort extends Protocol {
       ))))
     )
 
+
     override def afterAdd(client: ActorRef): Unit = {
       subscribers.route("ConnectionCountUpdate(subscribers.routees.size)", self)
     }
@@ -53,10 +54,6 @@ object DemoPort extends Protocol {
     context.parent ! status
 
     def receive = {
-      //      case PrinterData(n, _, _)                          => Logger.info(s"demoport got name - $n, when my $config")
-      //      case Status(_, Some(file), progress, temperatures) => //TODO add validation that printer-status not in printing state
-      //        status = status.withFile(file).readyToPrint()
-      //        context.parent ! status
       case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
     }
   }

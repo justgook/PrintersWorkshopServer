@@ -228,7 +228,7 @@ class WebSocketIntegrationSpec
       withSerialPortPrinter("Test Printer")
       stateProbe.fishForMessage(hint = "printers status not got") {
         case (state: JsObject, rev) =>
-          (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined]
+          (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined] && (state \ "conditions" \ "Test Printer").isInstanceOf[JsDefined] && (state \ "printers" \ "Test Printer" \ "status").asOpt[String].contains("connected")
         case _                      => false
       }
       socket.disconnect()

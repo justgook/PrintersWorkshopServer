@@ -17,7 +17,7 @@ package object protocols {
       def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
       val (name: String, props) = o match {
         case config: SerialPortConfiguration => ("serialport", Some(write(config)))
-        case config: DemoPortConfiguration   => ("demoport", None)
+        case config: DemoPortConfiguration   => ("demoport", Some(write(config)))
       }
       Json.obj("name" -> name) ++ {
         props.map(data => Json.obj("properties" -> data)) getOrElse Json.obj("properties" -> Json.obj())
@@ -27,9 +27,9 @@ package object protocols {
 
     override def reads(json: JsValue): JsResult[Configuration] = {
       def read[T: Reads] = implicitly[Reads[T]].reads((json \ "properties").get)
-      (json \ "name").as[String] match {
-        case "serialport" => read[SerialPortConfiguration]
-        case "demoport"   => read[DemoPortConfiguration]
+      (json \ "name").asOpt[String] match {
+        case Some("serialport") => read[SerialPortConfiguration]
+        case Some("demoport")   => read[DemoPortConfiguration]
         case _            => JsError()
       }
 
