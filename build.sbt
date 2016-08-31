@@ -13,30 +13,36 @@ coverageEnabled.in(Test, test) := true
 
 //libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
+val akkaV = "2.4.9"
+val `odersky-flow` = "3.0.2"
+val diffsonV = "2.0.2"
+val cucumberV = "1.2.4"
 libraryDependencies ++= Seq(
   jdbc,
   cache,
   ws,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test,
-  "com.typesafe.akka" %% "akka-persistence" % "2.4.9-RC2"
+  //main artifact Serial-port
+
+  "ch.jodersky" %% "flow-core" % `odersky-flow`,
+  "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime",
+  "org.gnieh" %% "diffson" % diffsonV,
+  "com.typesafe.akka" %% "akka-actor" % akkaV,
+  "com.typesafe.akka" %% "akka-http-core" % akkaV,
+  "com.typesafe.akka" %% "akka-persistence" % akkaV,
+
+  "junit" % "junit" % "4.12",
+  "info.cukes" % "cucumber-junit" % cucumberV,
+  "info.cukes" %% "cucumber-scala" % cucumberV % Test,
+  "org.dmonix.akka" % "akka-persistence-mock_2.11" % "1.1.1", //TODO create own mock
+  "com.typesafe.akka" %% "akka-testkit" % akkaV
 )
-scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
-
-javaOptions in Test += "-Dconfig.file=test/resources/test.conf"
-
-val akkaV = "2.4.8"
-val `odersky-flow` = "3.0.2"
-val diffsonV = "2.0.2"
-//main artifact Serial-port
-libraryDependencies += "ch.jodersky" %% "flow-core" % `odersky-flow`
-//"fat" jar containing native libraries
-libraryDependencies += "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime"
-
-libraryDependencies += "org.gnieh" %% "diffson" % diffsonV
-libraryDependencies +=  "com.typesafe.akka" %% "akka-testkit" % akkaV
-
 
 libraryDependencies += "com.github.justgook" % "PrintersWorkshopUI" % "0.9.1" % "external->default" from "https://github.com/justgook/PrintersWorkshopUI/archive/0.9.1.zip"
+scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
+
+unmanagedResourceDirectories in Test <+= baseDirectory(_ / "features")
+
+
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 

@@ -4,29 +4,29 @@ package controllers
   * Created by Roman Potashow on 08.07.2016.
   */
 
-import javax.inject._
+//import javax.inject._
 
 import actors.ClientConnectionActor._
-import actors.{ClientConnectionActor, TerminalWebSocketActor}
+import actors._
 import akka.actor._
 import akka.stream._
+import com.google.inject.{Inject, Singleton}
 import play.api.libs.streams._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
+import protocols.ProtocolsRegistryActor
 import services.UploadService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
 @Singleton
-class Application @Inject()(
-                             ws: WSClient,
-                             @Named("ws-connection-registry") connectionRegistry: ActorRef,
-                             @Named("protocol-registry") protocolsRegistryActor: ActorRef,
-                             @Named("printers-registry") printersSettings: ActorRef,
-                             @Named("file-registry") fileRegistry: ActorRef,
-                             @Named("printers-connections") printersConnections: ActorRef)
-                           (implicit system: ActorSystem, m: Materializer) extends Controller {
+class Application @Inject()(ws: WSClient)(implicit system: ActorSystem, m: Materializer) extends Controller {
+
+  val connectionRegistry = system.actorOf(ClientConnectionRegistryActor.props, "connection-registry")
+  val protocolsRegistryActor = system.actorOf(ProtocolsRegistryActor.props, "protocol-registry")
+  val printersConnections = system.actorOf(PrinterConnectionRegistryActor.props, "printers-connections-registry")
+  val printersSettings = system.actorOf(PrinterSettingsRegistryActor.props(printersConnections), "printers-settings-registry")
+  val fileRegistry = system.actorOf(FileRegistryActor.props, "file-registry")
 
   val uploadService: UploadService = UploadService
 

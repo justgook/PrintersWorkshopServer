@@ -1,4 +1,4 @@
-package acceptance.helpers
+package helpers
 
 import java.net.{InetSocketAddress, URI}
 import java.nio.charset.Charset
@@ -61,15 +61,16 @@ object WebSocketClient {
     WebSocketClient(url) { case x => handle ! x }
   }
 
+  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
+    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
+    new DefaultWebSocketClient(url, version, handle, reader)
+  }
+
   def apply(url: URI, handle: TestProbe): WebSocketClient = {
     require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
     WebSocketClient(url) { case x => handle.ref ! x }
   }
 
-  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
-    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
-    new DefaultWebSocketClient(url, version, handle, reader)
-  }
   /**
     * Fix bug in standard HttpResponseDecoder for web socket clients. When status 101 is received for Hybi00, there are 16
     * bytes of contents expected
@@ -181,12 +182,6 @@ object WebSocketClient {
 
     import WebSocketClient.Messages._
 
-    def futureListener(handleWith: ChannelFuture => Unit) = new ChannelFutureListener {
-      def operationComplete(future: ChannelFuture) {
-        handleWith(future)
-      }
-    }
-
     def disconnect() = {
       if (channel != null && channel.isConnected) {
         handler(Disconnecting)
@@ -201,6 +196,12 @@ object WebSocketClient {
           handler(WriteFailed(message, Option(fut.getCause)))
         }
       })
+    }
+
+    def futureListener(handleWith: ChannelFuture => Unit) = new ChannelFutureListener {
+      def operationComplete(future: ChannelFuture) {
+        handleWith(future)
+      }
     }
 
     private def defaultHandler: Handler = {
