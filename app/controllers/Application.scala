@@ -4,7 +4,6 @@ package controllers
   * Created by Roman Potashow on 08.07.2016.
   */
 
-//import javax.inject._
 
 import actors.ClientConnectionActor._
 import actors._
@@ -19,14 +18,16 @@ import services.UploadService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
+
 @Singleton
-class Application @Inject()(ws: WSClient)(implicit system: ActorSystem, m: Materializer) extends Controller {
+class Application @Inject()(ws: WSClient, configuration: play.api.Configuration)(implicit system: ActorSystem, m: Materializer) extends Controller {
 
   val connectionRegistry = system.actorOf(ClientConnectionRegistryActor.props, "connection-registry")
   val protocolsRegistryActor = system.actorOf(ProtocolsRegistryActor.props, "protocol-registry")
   val printersConnections = system.actorOf(PrinterConnectionRegistryActor.props, "printers-connections-registry")
   val printersSettings = system.actorOf(PrinterSettingsRegistryActor.props(printersConnections), "printers-settings-registry")
-  val fileRegistry = system.actorOf(FileRegistryActor.props, "file-registry")
+
+  val fileRegistry = system.actorOf(FileRegistryActor.props(configuration.underlying.getString("printerWorkshop.fileDir")), "file-registry")
 
   val uploadService: UploadService = UploadService
 

@@ -1,8 +1,6 @@
 package features.steps
 
 import akka.actor.ActorSystem
-
-//import akka.testkit.{TestKit, TestKitBase}
 import cucumber.api.scala.ScalaDsl
 import helpers.PersistenceSuiteTrait
 import play.api.inject.bind

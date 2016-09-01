@@ -13,6 +13,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
 import org.jboss.netty.handler.codec.http._
 import org.jboss.netty.handler.codec.http.websocketx._
 import org.jboss.netty.util.CharsetUtil
+import play.api.Logger
 
 import scala.collection.JavaConversions._
 
@@ -112,7 +113,7 @@ object WebSocketClient {
           client.handler(Connected)
 
         case f: TextWebSocketFrame  =>
-          println("<< " + f.getText)
+          Logger.debug("<< " + f.getText)
           client.handler(TextMessage(f.getText))
         case _: PongWebSocketFrame  =>
         case _: CloseWebSocketFrame => ctx.getChannel.close()
@@ -190,7 +191,7 @@ object WebSocketClient {
     }
 
     def send(message: String, charset: Charset = CharsetUtil.UTF_8) = {
-      println(s">> $message")
+      Logger.debug(s">> $message")
       channel.write(new TextWebSocketFrame(ChannelBuffers.copiedBuffer(message, charset))).addListener(futureListener { fut =>
         if (!fut.isSuccess) {
           handler(WriteFailed(message, Option(fut.getCause)))

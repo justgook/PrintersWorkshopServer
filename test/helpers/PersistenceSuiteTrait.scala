@@ -15,10 +15,8 @@ import com.typesafe.config.ConfigFactory
 object PersistenceSuiteTrait {
 
   def config() = ConfigFactory.parseString(
-    s"""akka.loggers = [akka.testkit.TestEventListener] # makes both log-snooping and logging work
-         akka.loglevel = "DEBUG"
-         play.akka.loglevel = DEBUG
-         akka.persistence.journal.plugin = "$journalId"
+    s"""akka.loglevel = "ERROR"
+        akka.persistence.journal.plugin = "$journalId"
          akka.persistence.snapshot-store.plugin = "$snapStoreId"
          $journalId {
            class = "org.dmonix.akka.persistence.JournalPlugin"
@@ -28,7 +26,7 @@ object PersistenceSuiteTrait {
           class = "org.dmonix.akka.persistence.SnapshotStorePlugin"
           plugin-dispatcher = "akka.persistence.dispatchers.default-plugin-dispatcher"
          }
-         akka.actor.debug.receive = on""")
+         """)
 
   def journalId = "dummy-journal"
 
