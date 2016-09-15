@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package helpers
 
 import akka.actor.{Actor, ActorLogging, Props}

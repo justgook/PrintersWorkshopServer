@@ -1,29 +1,46 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package actors
 
 
+import actors.Subscribers2.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.IO
 import ch.jodersky.flow.Serial
 import play.api.libs.json.Json
 
-/**
-  * Created by Roman Potashow on 03.08.2016.
-  */
-class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers {
+class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers2 {
 
   import actors.FileRegistryActor._
   import context._
 
   IO(Serial) ! Serial.Watch(directory)
-  var files: List[File] = List.empty
 
-  def receive = withSubscribers {
+  def receive(files: List[File], subscribers: Set[ActorRef]): Receive = {
+    case AfterTerminated(oldSubscriber, newSubscribers) =>
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(files, newSubscribers))
+
+    case AfterAdd(newSubscriber, newSubscribers) =>
+      newSubscriber ! Files(files)
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(files, newSubscribers))
+
     case Serial.CommandFailed(w: Serial.Watch, reason)             =>
-    case Serial.Connected(file) if file matches s"$directory/\\d+" => files ::= File(file, 0); log.info("got file {}", file)
+
+    case Serial.Connected(file) if file matches s"$directory/\\d+" =>
+      val newFiles = files.::(File(file, 0))
+      log.warning(s"$subscribers")
+      subscribers.foreach(c => c ! Files(newFiles))
+      context become subscribersParser(subscribers).orElse[Any, Unit](receive(newFiles, subscribers))
     case msg                                                       => log.warning("Implement me, ({})", msg)
   }
 
-  override def afterAdd(subscriber: ActorRef) = subscriber ! Files(files)
+  def receive = subscribersParser(Set.empty).orElse[Any, Unit](receive(List.empty, Set.empty))
+
+  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]) = {}
+
+  override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
 
 }
 

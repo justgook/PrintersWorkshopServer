@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package services
 
 

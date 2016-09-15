@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 import akka.actor.{ActorContext, ActorRef}
 import play.api.libs.json._
 import protocols.SerialPort._

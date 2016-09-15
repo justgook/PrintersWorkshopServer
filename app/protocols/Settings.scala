@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package protocols
 
 import play.api.libs.json._

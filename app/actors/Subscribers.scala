@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}

@@ -1,12 +1,13 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import protocols.Connection.Status
 import protocols.{Configuration, StatusText}
 
-/**
-  * Created by Roman Potashow on 02.08.2016.
-  */
 class PrinterConnectionRegistryActor
   extends Actor with ActorLogging with Subscribers {
 

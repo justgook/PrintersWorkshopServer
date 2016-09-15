@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package helpers
 
 import java.net.{InetSocketAddress, URI}
@@ -62,14 +66,14 @@ object WebSocketClient {
     WebSocketClient(url) { case x => handle ! x }
   }
 
-  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
-    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
-    new DefaultWebSocketClient(url, version, handle, reader)
-  }
-
   def apply(url: URI, handle: TestProbe): WebSocketClient = {
     require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
     WebSocketClient(url) { case x => handle.ref ! x }
+  }
+
+  def apply(url: URI, version: WebSocketVersion = WebSocketVersion.V13, reader: FrameReader = defaultFrameReader)(handle: Handler): WebSocketClient = {
+    require(url.getScheme.startsWith("ws"), "The scheme of the url should be 'ws' or 'wss'")
+    new DefaultWebSocketClient(url, version, handle, reader)
   }
 
   /**

@@ -1,6 +1,6 @@
 import scala.language.postfixOps
 
-name := "PrinterWorksopServer"
+name := "PrinterWorkshopServer"
 version := "1.0.0-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
@@ -13,7 +13,7 @@ coverageEnabled.in(Test, test) := true
 
 //libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
-val akkaV = "2.4.9"
+val akkaV = "2.4.10"
 val `odersky-flow` = "3.0.2"
 val diffsonV = "2.0.2"
 val cucumberV = "1.2.4"

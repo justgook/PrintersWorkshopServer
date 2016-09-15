@@ -1,9 +1,8 @@
+/*
+ * Copyright (c) PrinterWorkshopServer - 2016. - Roman Potashow
+ */
+
 package actors
-
-/**
-  * Created by Roman Potashow on 17.06.2016.
-  */
-
 
 import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
 import actors.FileRegistryActor.{File, Files}
@@ -114,6 +113,13 @@ class ClientConnectionActor(
       }
     case PrinterConnections(list) =>
       val newState = state.withConditions(list)
+      if (newState != state) {
+        // not update revision for readOnly data
+        out ! Patch(revision, state, newState)
+        state = newState
+      }
+    case Files(f)                 =>
+      val newState = state.withFiles(f)
       if (newState != state) {
         // not update revision for readOnly data
         out ! Patch(revision, state, newState)
