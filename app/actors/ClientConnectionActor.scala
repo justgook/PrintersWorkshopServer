@@ -43,7 +43,7 @@ class ClientConnectionActor(
     fileRegistry ! Subscribers.Add(self)
   }
 
-  def receive = stateBuffering
+  def receive: Receive = stateBuffering
 
   def stateBuffering: Receive = {
     var gotSettings = false
@@ -141,7 +141,7 @@ class ClientConnectionActor(
 object ClientConnectionActor {
 
   implicit val jsonPatchFormat = DiffsonProtocol.JsonPatchFormat
-  implicit val stateFormat     = Json.format[State]
+  implicit val stateFormat: OFormat[State] = Json.format[State]
 
   def props(
              out: ActorRef,
@@ -157,15 +157,15 @@ object ClientConnectionActor {
   sealed trait In extends Message
   sealed trait Out extends Message
   case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty, conditions: Map[String, Status] = Map.empty, files: List[File] = List.empty) {
-    def withProtocols(p: List[ProtocolSettings]) = copy(protocols = p)
+    def withProtocols(p: List[ProtocolSettings]): State = copy(protocols = p)
 
-    def withPrinters(p: Map[String, Printer]) = copy(printers = p)
+    def withPrinters(p: Map[String, Printer]): State = copy(printers = p)
 
-    def withConnections(c: Int) = copy(connections = c)
+    def withConnections(c: Int): State = copy(connections = c)
 
-    def withConditions(c: Map[String, Status]) = copy(conditions = c)
+    def withConditions(c: Map[String, Status]): State = copy(conditions = c)
 
-    def withFiles(f: List[File]) = copy(files = f)
+    def withFiles(f: List[File]): State = copy(files = f)
 
     def withPatch(p: JsonPatch): Try[State] = Try(p(this))
   }
@@ -178,7 +178,7 @@ object ClientConnectionActor {
   object Fail {
     case class Status(code: Int, text: String)
     object Status {
-      implicit val failStatusWrites = Json.writes[Status]
+      implicit val failStatusWrites: Writes[Status] = Json.writes[Status]
       val UNKNOWN_MESSAGE = Status(1, "Unknown Message type")
       val NOT_SYNC        = Status(2, "You are not in sync with server, please renew your data")
 
@@ -188,7 +188,7 @@ object ClientConnectionActor {
 
   // in
   object In {
-    implicit val updateReads = Json.reads[Update]
+    implicit val updateReads: Reads[Update] = Json.reads[Update]
     implicit val inReads     = new Reads[In]() {
       override def reads(json: JsValue): JsResult[In] = {
         def read[T: Reads] = implicitly[Reads[T]].reads((json \ "args").get)
@@ -204,7 +204,7 @@ object ClientConnectionActor {
 
   object Out {
     // out
-    implicit val failWrites = Json.writes[Fail]
+    implicit val failWrites: Writes[Fail] = Json.writes[Fail]
     implicit val outWrites  = new Writes[Out] {
       override def writes(o: Out): JsValue = {
         def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
@@ -226,7 +226,7 @@ object ClientConnectionActor {
     }
   }
   object Message {
-    implicit val messageFlowTransformer = MessageFlowTransformer.jsonMessageFlowTransformer[In, Out]
+    implicit val messageFlowTransformer: MessageFlowTransformer[In, Out] = MessageFlowTransformer.jsonMessageFlowTransformer[In, Out]
   }
   case object Ping extends In
 

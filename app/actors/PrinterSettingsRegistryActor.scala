@@ -25,7 +25,7 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
 
   def persistenceId: String = "PrinterSettingsRegistryActor"
 
-  override def afterAdd(client: ActorRef) = client ! Printers(list = printers)
+  override def afterAdd(client: ActorRef): Unit = client ! Printers(list = printers)
 
   def receiveRecover = {
 
@@ -43,24 +43,6 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
 
     case RecoveryCompleted => log.info("Printer settings restore restore completed - {}", printers)
     case s                 => log.error("unknown msg {}", s)
-  }
-
-  def receiveCommand = withSubscribers {
-    case SaveSnapshotSuccess(metadata)         => log.info("SaveSnapshotSuccess, {}", metadata)
-    case SaveSnapshotFailure(metadata, reason) => log.info("SaveSnapshotFailure {}", reason)
-    case p: Printers                           =>
-      parsePrinterList(p)
-      saveState()
-      log.info("{}", printers.keys.toString())
-      subscribers.route(Printers(list = printers), self)
-    case (name: String, status: StatusText)    =>
-      printers.get(name) match {
-        case Some(oPrinter: NewPrinter)       => printers += name -> NewPrinter(status)
-        case Some(printer: ConfiguredPrinter) => printers += name -> printer.withStatus(status)
-        case None                             => log.warning("Got status update for unknown printer")
-      }
-      subscribers.route(Printers(list = printers), self)
-    case t                                     => log.error("Got unknown message {}", t)
   }
 
   def parsePrinterList(p: Printers): Unit = {
@@ -97,6 +79,24 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
             printers += name -> printer
         }
     }
+  }
+
+  def receiveCommand = withSubscribers {
+    case SaveSnapshotSuccess(metadata)         => log.info("SaveSnapshotSuccess, {}", metadata)
+    case SaveSnapshotFailure(metadata, reason) => log.info("SaveSnapshotFailure {}", reason)
+    case p: Printers                           =>
+      parsePrinterList(p)
+      saveState()
+      log.info("{}", printers.keys.toString())
+      subscribers.route(Printers(list = printers), self)
+    case (name: String, status: StatusText)    =>
+      printers.get(name) match {
+        case Some(oPrinter: NewPrinter)       => printers += name -> NewPrinter(status)
+        case Some(printer: ConfiguredPrinter) => printers += name -> printer.withStatus(status)
+        case None                             => log.warning("Got status update for unknown printer")
+      }
+      subscribers.route(Printers(list = printers), self)
+    case t                                     => log.error("Got unknown message {}", t)
   }
 
   def saveState(): Unit = {

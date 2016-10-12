@@ -9,7 +9,7 @@ import actors.Subscribers2.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.IO
 import ch.jodersky.flow.Serial
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OFormat}
 
 class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers2 {
 
@@ -26,7 +26,7 @@ class FileRegistryActor(directory: String) extends Actor with ActorLogging with 
       newSubscriber ! Files(files)
       context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(files, newSubscribers))
 
-    case Serial.CommandFailed(w: Serial.Watch, reason)             =>
+    case Serial.CommandFailed(w: Serial.Watch, reason) =>
 
     case Serial.Connected(file) if file matches s"$directory/\\d+" =>
       val newFiles = files.::(File(file, 0))
@@ -36,9 +36,9 @@ class FileRegistryActor(directory: String) extends Actor with ActorLogging with 
     case msg                                                       => log.warning("Implement me, ({})", msg)
   }
 
-  def receive = subscribersParser(Set.empty).orElse[Any, Unit](receive(List.empty, Set.empty))
+  def receive: Receive = subscribersParser(Set.empty).orElse[Any, Unit](receive(List.empty, Set.empty))
 
-  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]) = {}
+  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {}
 
   override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
 
@@ -53,7 +53,7 @@ object FileRegistryActor {
   case class Files(list: List[File])
 
   object File {
-    implicit val fileFormat = Json.format[File]
+    implicit val fileFormat: OFormat[File] = Json.format[File]
   }
 
 }

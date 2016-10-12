@@ -4,22 +4,31 @@
 
 package actors
 
+import actors.Subscribers2.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import protocols.Connection.Status
 import protocols.{Configuration, StatusText}
 
 class PrinterConnectionRegistryActor
-  extends Actor with ActorLogging with Subscribers {
+  extends Actor with ActorLogging with Subscribers2 {
+  log.info("PrinterConnectionRegistryActor Created")
 
   import actors.PrinterConnectionRegistryActor._
-  log.info("PrinterConnectionRegistryActor Created")
-  private var connections: Map[ActorRef, (String, Status)] = Map.empty
 
-  override def afterAdd(client: ActorRef) = client ! PrinterConnections(connections.values.toMap[String, Status])
+  def receive: Receive = subscribersParser(Set.empty).orElse[Any, Unit](receive(Actor.noSender, Map.empty, Set.empty))
 
-  def receive: Receive = receive(Actor.noSender)
+  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {}
 
-  def receive(printersSettings: ActorRef): Receive = withSubscribers {
+  override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
+
+  def receive(printersSettings: ActorRef, connections: Map[ActorRef, (String, Status)], subscribers: Set[ActorRef]): Receive = {
+    case AfterTerminated(_, newSubscribers) =>
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(printersSettings, connections, newSubscribers))
+
+    case AfterAdd(newSubscriber, newSubscribers) =>
+      newSubscriber ! PrinterConnections(connections.values.toMap[String, Status])
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(printersSettings, connections, newSubscribers))
+
     case DirectConnection(name: String) =>
       connections.find((p) => p._2._1 == name) match {
         case Some(c) => sender() ! c._1
@@ -27,10 +36,9 @@ class PrinterConnectionRegistryActor
       }
 
     case (name: String, config: Configuration) =>
-      context.become(receive(sender()))
       val ref = protocols.connect(config, context)
       context watch ref
-      connections += ref -> (name, Status())
+      context become subscribersParser(subscribers).orElse[Any, Unit](receive(sender(), connections + (ref -> (name, Status())), subscribers))
       log.info(s"got request to connect $name with settings $config")
     case (name: String, PoisonPill)            =>
       connections.find((p) => p._2._1 == name) match {
@@ -42,21 +50,28 @@ class PrinterConnectionRegistryActor
       connections.get(ref) match {
         case Some(tuple) =>
           log.info(s"update for $tuple")
-          connections += ref -> (tuple._1, status)
           printersSettings ! (tuple._1, StatusText.Connected)
+          context become subscribersParser(subscribers).orElse[Any, Unit](receive(printersSettings, connections + (ref -> (tuple._1, status)), subscribers))
         case None        => log.warning(s"got status update from deleted connection")
       }
-      subscribers.route(PrinterConnections(connections.values.toMap[String, Status]), self)
+      subscribers.foreach(c => c ! PrinterConnections(connections.values.toMap[String, Status]))
 
     case Terminated(connection) if connections contains connection =>
       log.info(s"removing connection $connection")
-      connections -= connection
-      subscribers.route(PrinterConnections(connections.values.toMap[String, Status]), self)
-    case msg                                   => log.warning(s"got $msg")
+      val newConnection = connections - connection
+      subscribers.foreach(c => c ! PrinterConnections(newConnection.values.toMap[String, Status]))
+      context become subscribersParser(subscribers).orElse[Any, Unit](receive(printersSettings, newConnection, subscribers))
+
+
+    case msg => log.warning(s"got $msg")
   }
 }
+
 object PrinterConnectionRegistryActor {
-  def props = Props[PrinterConnectionRegistryActor]
+  def props: Props = Props[PrinterConnectionRegistryActor]
+
   case class PrinterConnections(list: Map[String, Status])
+
   case class DirectConnection(name: String)
+
 }
