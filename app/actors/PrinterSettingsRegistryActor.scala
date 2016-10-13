@@ -5,6 +5,7 @@
 package actors
 
 
+import actors.Subscribers2.{AfterAdd, AfterTerminated}
 import akka.actor.{ActorLogging, ActorRef, PoisonPill, Props}
 import akka.persistence._
 import play.api.libs.json._
@@ -14,21 +15,24 @@ import protocols.{Configuration, StatusText}
 /**
   * Created by Roman Potashow on 26.06.2016.
   */
-//TODO add way to save and store on restart Application
+
 class PrinterSettingsRegistryActor(printersConnections: ActorRef)
 //(@Named("printers-connections") printersConnections: ActorRef) //TODO find way how move that part to Module.scala
-  extends PersistentActor with ActorLogging with Subscribers {
+  extends PersistentActor with ActorLogging with Subscribers2 {
 
   import actors.PrinterSettingsRegistryActor._
 
-  private var printers: Map[String, Printer] = Map.empty
+  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {}
+
+  override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
+
+
 
   def persistenceId: String = "PrinterSettingsRegistryActor"
 
-  override def afterAdd(client: ActorRef): Unit = client ! Printers(list = printers)
+  //  override def afterAdd(client: ActorRef): Unit = client ! Printers(list = printers)
 
-  def receiveRecover = {
-
+  def restore(printers: Map[String, Printer]): Receive = {
     case SnapshotOffer(metadata, snapshot: ExampleState) =>
       val list = (for (
         item <- snapshot.events;
@@ -39,14 +43,52 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
           case JsError(eror)           => item._1 -> NewPrinter(status = StatusText.Unknown)
         }
       }).toMap[String, Printer]
-      parsePrinterList(Printers(list))
-
-    case RecoveryCompleted => log.info("Printer settings restore restore completed - {}", printers)
-    case s                 => log.error("unknown msg {}", s)
+      val newList = parsePrinterList(Printers(list), printers)
+      log.info("Printer settings before become {}", newList)
+      context become subscribersParser(Set.empty).orElse[Any, Unit](receive(newList, Set.empty))
+    case RecoveryCompleted                               =>
+      log.info("Printer settings restore restore completed")
+    case s                                               => log.error("unknown msg {}", s)
   }
 
-  def parsePrinterList(p: Printers): Unit = {
-    p.list.foreach {
+  def receive(printers: Map[String, Printer], subscribers: Set[ActorRef]): Receive = {
+    case AfterTerminated(_, newSubscribers)      =>
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(printers, newSubscribers))
+    case AfterAdd(newSubscriber, newSubscribers) =>
+      newSubscriber ! Printers(list = printers)
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(printers, newSubscribers))
+    case SaveSnapshotSuccess(metadata)           => log.info("SaveSnapshotSuccess, {}", metadata)
+    case SaveSnapshotFailure(metadata, reason)   => log.info("SaveSnapshotFailure {}", reason)
+    case p: Printers                             =>
+      val newList = parsePrinterList(p, printers)
+      log.info("Printer settings before become {}", newList)
+      subscribers.foreach(c => c ! Printers(list = newList))
+      context become subscribersParser(subscribers).orElse[Any, Unit](receive(newList, subscribers))
+      saveState(newList)
+      log.info("{}", printers.keys.toString())
+
+
+    case (name: String, status: StatusText) =>
+      var newList = printers
+      printers.get(name) match {
+        case Some(oPrinter: NewPrinter)       => newList += name -> NewPrinter(status)
+        case Some(printer: ConfiguredPrinter) => newList += name -> printer.withStatus(status)
+        case None                             => log.warning("Got status update for unknown printer")
+      }
+      subscribers.foreach(c => c ! Printers(list = newList))
+      context become subscribersParser(subscribers).orElse[Any, Unit](receive(newList, subscribers))
+    case t                                  => log.error("Got unknown message {}", t)
+
+  }
+
+  def receiveCommand: Receive = subscribersParser(Set.empty).orElse[Any, Unit](receive(Map.empty, Set.empty))
+
+  def receiveRecover: Receive = restore(Map.empty)
+
+
+  def parsePrinterList(newList: Printers, oldList: Map[String, Printer]): Map[String, Printer] = {
+    var printers = oldList
+    newList.list.foreach {
       case (name, printer: NewPrinter)        =>
         printers.get(name) match {
           case Some(oPrinter) if printer.status == StatusText.Remove =>
@@ -79,27 +121,10 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
             printers += name -> printer
         }
     }
+    printers
   }
 
-  def receiveCommand = withSubscribers {
-    case SaveSnapshotSuccess(metadata)         => log.info("SaveSnapshotSuccess, {}", metadata)
-    case SaveSnapshotFailure(metadata, reason) => log.info("SaveSnapshotFailure {}", reason)
-    case p: Printers                           =>
-      parsePrinterList(p)
-      saveState()
-      log.info("{}", printers.keys.toString())
-      subscribers.route(Printers(list = printers), self)
-    case (name: String, status: StatusText)    =>
-      printers.get(name) match {
-        case Some(oPrinter: NewPrinter)       => printers += name -> NewPrinter(status)
-        case Some(printer: ConfiguredPrinter) => printers += name -> printer.withStatus(status)
-        case None                             => log.warning("Got status update for unknown printer")
-      }
-      subscribers.route(Printers(list = printers), self)
-    case t                                     => log.error("Got unknown message {}", t)
-  }
-
-  def saveState(): Unit = {
+  def saveState(printers: Map[String, Printer]): Unit = {
     val list: List[(String, JsValue)] = printers.map { case (name, value) =>
       value match {
         case p: NewPrinter        => (name, Json.obj())
@@ -115,8 +140,11 @@ object PrinterSettingsRegistryActor {
   def props(printersConnections: ActorRef) = Props(new PrinterSettingsRegistryActor(printersConnections))
 
   sealed trait Printer
+
   case class Printers(list: Map[String, Printer])
+
   case class NewPrinter(status: StatusText) extends Printer
+
   case class ConfiguredPrinter(status: StatusText, settings: Configuration) extends Printer {
     def withStatus(s: StatusText) = copy(status = s)
   }
@@ -128,9 +156,9 @@ object PrinterSettingsRegistryActor {
   }
 
   object Printer {
-    implicit val newPrinterFormat        = Json.format[NewPrinter]
+    implicit val newPrinterFormat = Json.format[NewPrinter]
     implicit val configuredPrinterFormat = Json.format[ConfiguredPrinter]
-    implicit val printerFormat           = new Format[Printer] {
+    implicit val printerFormat = new Format[Printer] {
       //
       override def writes(o: Printer): JsValue = {
         o match {

@@ -19,15 +19,12 @@ class FileRegistryActor(directory: String) extends Actor with ActorLogging with 
   IO(Serial) ! Serial.Watch(directory)
 
   def receive(files: List[File], subscribers: Set[ActorRef]): Receive = {
-    case AfterTerminated(oldSubscriber, newSubscribers) =>
+    case AfterTerminated(oldSubscriber, newSubscribers)            =>
       context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(files, newSubscribers))
-
-    case AfterAdd(newSubscriber, newSubscribers) =>
+    case AfterAdd(newSubscriber, newSubscribers)                   =>
       newSubscriber ! Files(files)
       context become subscribersParser(newSubscribers).orElse[Any, Unit](receive(files, newSubscribers))
-
-    case Serial.CommandFailed(w: Serial.Watch, reason) =>
-
+    case Serial.CommandFailed(w: Serial.Watch, reason)             =>
     case Serial.Connected(file) if file matches s"$directory/\\d+" =>
       val newFiles = files.::(File(file, 0))
       log.warning(s"$subscribers")

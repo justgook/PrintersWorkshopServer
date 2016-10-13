@@ -33,7 +33,7 @@ class ClientConnectionActor(
   import ClientConnectionActor._
 
   private var revision = 1
-  private var state    = State()
+  private var state = State()
 
   override def preStart: Unit = {
     connectionRegistry ! Subscribers.Add(self)
@@ -51,6 +51,7 @@ class ClientConnectionActor(
     var gotPrintersSettings = false
     var gotPrintersConnections = false
     var gotFiles = false
+
     def checkBuffer(state: State): State = {
       if (gotSettings && gotConnection && gotPrintersSettings && gotPrintersConnections && gotFiles) {
         out ! SetState(revision, state)
@@ -59,6 +60,7 @@ class ClientConnectionActor(
       }
       state
     }
+
     withDefaultMessages {
       case SettingsList(list)       => gotSettings = true; state = checkBuffer(state.withProtocols(list))
       case ConnectionCountUpdate(c) => gotConnection = true; state = checkBuffer(state.withConnections(c))
@@ -154,8 +156,11 @@ object ClientConnectionActor {
     new ClientConnectionActor(out, connectionRegistry, protocolSettings, printersSettings, printersConnections, fileRegistry))
 
   sealed trait Message
+
   sealed trait In extends Message
+
   sealed trait Out extends Message
+
   case class State(connections: Int = 0, protocols: List[ProtocolSettings] = List.empty, printers: Map[String, Printer] = Map.empty, conditions: Map[String, Status] = Map.empty, files: List[File] = List.empty) {
     def withProtocols(p: List[ProtocolSettings]): State = copy(protocols = p)
 
@@ -169,29 +174,40 @@ object ClientConnectionActor {
 
     def withPatch(p: JsonPatch): Try[State] = Try(p(this))
   }
+
   case class SetState(revision: Int, state: State) extends Out
+
   case class SuccessUpdate(revision: Int) extends Out
+
   case class Update(revision: Int, patch: JsonPatch) extends In
+
   case class Unknown(msg: String) extends In
+
   case class Fail(error: Fail.Status) extends Out
+
   case class Patch(revision: Int, oldState: State, newState: State) extends Out
+
   object Fail {
+
     case class Status(code: Int, text: String)
+
     object Status {
       implicit val failStatusWrites: Writes[Status] = Json.writes[Status]
       val UNKNOWN_MESSAGE = Status(1, "Unknown Message type")
-      val NOT_SYNC        = Status(2, "You are not in sync with server, please renew your data")
+      val NOT_SYNC = Status(2, "You are not in sync with server, please renew your data")
 
       def CANNOT_APPLY_PATCH(s: String = "Unknown") = Status(3, s)
     }
+
   }
 
   // in
   object In {
     implicit val updateReads: Reads[Update] = Json.reads[Update]
-    implicit val inReads     = new Reads[In]() {
+    implicit val inReads = new Reads[In]() {
       override def reads(json: JsValue): JsResult[In] = {
         def read[T: Reads] = implicitly[Reads[T]].reads((json \ "args").get)
+
         (json \ "type").as[String] match {
           case "update" => JsSuccess(Update(revision = (json \ "revision").as[Int], patch = read[JsonPatch].get))
           case "ping"   => JsSuccess(Ping)
@@ -205,9 +221,10 @@ object ClientConnectionActor {
   object Out {
     // out
     implicit val failWrites: Writes[Fail] = Json.writes[Fail]
-    implicit val outWrites  = new Writes[Out] {
+    implicit val outWrites = new Writes[Out] {
       override def writes(o: Out): JsValue = {
         def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
+
         val (t, args, revision) = o match {
           case Fail(error)                  => ("fail", Some(Json.obj("code" -> error.code, "text" -> error.text)), None)
           case Pong                         => ("pong", None, None)
@@ -225,12 +242,15 @@ object ClientConnectionActor {
       }
     }
   }
+
   object Message {
     implicit val messageFlowTransformer: MessageFlowTransformer[In, Out] = MessageFlowTransformer.jsonMessageFlowTransformer[In, Out]
   }
+
   case object Ping extends In
 
   case object Reset extends In
 
   case object Pong extends Out
+
 }

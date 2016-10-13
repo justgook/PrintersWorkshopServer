@@ -14,15 +14,15 @@ import akka.pattern.ask
 import akka.util.Timeout
 import protocols.Connection.ConsoleInput
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 
 class TerminalWebSocketActor(out: ActorRef, name: String, printersConnections: ActorRef) extends Actor with ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
-  val future = printersConnections ? DirectConnection(name)
-  val result = Await.result(future, timeout.duration)
+  val future: Future[Any] = printersConnections ? DirectConnection(name)
+  val result: Any = Await.result(future, timeout.duration)
   result match {
     case connection: ActorRef =>
       log.info(s"$connection ! Subscribers.Add($self)")
@@ -34,7 +34,7 @@ class TerminalWebSocketActor(out: ActorRef, name: String, printersConnections: A
     case msg                  => log.error(s"got unexpected $msg")
   }
 
-  def receive = opened(Actor.noSender)
+  def receive: Receive = opened(Actor.noSender)
 
   def opened(connection: ActorRef): Receive = {
     case msg: String if sender == connection => out ! msg
@@ -42,7 +42,7 @@ class TerminalWebSocketActor(out: ActorRef, name: String, printersConnections: A
     case msg                                 => log.error(s"got unexpected $msg, $sender")
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     context.parent ! PoisonPill // https://github.com/playframework/playframework/issues/6408 - remove me when it is closed
   }
 }

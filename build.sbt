@@ -14,7 +14,7 @@ coverageEnabled.in(Test, test) := true
 //libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
 val akkaV = "2.4.11"
-val `odersky-flow` = "3.0.2"
+val `odersky-flow` = "3.0.3"
 val diffsonV = "2.0.2"
 val cucumberV = "1.2.5"
 libraryDependencies ++= Seq(

@@ -26,5 +26,7 @@ class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscri
 
 object ClientConnectionRegistryActor {
   def props: Props = Props[ClientConnectionRegistryActor]
+
   case class ConnectionCountUpdate(count: Int)
+
 }
