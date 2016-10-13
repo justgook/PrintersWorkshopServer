@@ -4,20 +4,17 @@
 
 package actors
 
-import actors.Subscribers2.{AfterAdd, AfterTerminated}
+import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 
-/**
-  * Created by Roman Potashow on 29.06.2016.
-  */
-trait Subscribers2 {
+trait Subscribers {
   this: Actor with ActorLogging =>
   //  protected var subscribers
 
   //  def withSubscribers(subscribers: Set[ActorRef])(fn: Receive): Receive = receiveExtend(subscribers) orElse fn
 
   def subscribersParser(subscribers: Set[ActorRef]): Receive = {
-    case Subscribers2.Add(subscriber) =>
+    case Subscribers.Add(subscriber) =>
       log.debug("{}({}) got new subscriber", self.path.name, this.getClass.getName)
       context watch subscriber
       val newSubscribers = subscribers + subscriber
@@ -36,7 +33,7 @@ trait Subscribers2 {
   def afterAdd(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = context.become(subscribersParser(subscribers))
 }
 
-object Subscribers2 {
+object Subscribers {
 
   case class Add(subscriber: ActorRef)
 

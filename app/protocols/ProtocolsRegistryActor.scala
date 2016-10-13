@@ -5,7 +5,7 @@
 package protocols
 
 
-import actors.Subscribers2
+import actors.Subscribers
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import protocols.Protocol.SettingsList
 
@@ -14,7 +14,7 @@ import protocols.Protocol.SettingsList
   */
 
 
-class ProtocolsRegistryActor extends Actor with ActorLogging with Subscribers2 {
+class ProtocolsRegistryActor extends Actor with ActorLogging with Subscribers {
 
   override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {
     client ! SettingsList(protocols.settings) // TODO update it to real Connection Check / update not just static array

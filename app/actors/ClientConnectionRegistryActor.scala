@@ -8,7 +8,7 @@ import actors.ClientConnectionRegistryActor.ConnectionCountUpdate
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
 
-class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscribers2 {
+class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscribers {
 
   override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {
     client ! ConnectionCountUpdate(subscribers.size)

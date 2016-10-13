@@ -36,11 +36,11 @@ class ClientConnectionActor(
   private var state = State()
 
   override def preStart: Unit = {
-    connectionRegistry ! Subscribers2.Add(self)
-    protocolSettings ! Subscribers2.Add(self)
-    printersSettings ! Subscribers2.Add(self)
-    printerConnections ! Subscribers2.Add(self)
-    fileRegistry ! Subscribers2.Add(self)
+    connectionRegistry ! Subscribers.Add(self)
+    protocolSettings ! Subscribers.Add(self)
+    printersSettings ! Subscribers.Add(self)
+    printerConnections ! Subscribers.Add(self)
+    fileRegistry ! Subscribers.Add(self)
   }
 
   def receive: Receive = stateBuffering

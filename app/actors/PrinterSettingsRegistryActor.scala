@@ -5,7 +5,7 @@
 package actors
 
 
-import actors.Subscribers2.{AfterAdd, AfterTerminated}
+import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{ActorLogging, ActorRef, PoisonPill, Props}
 import akka.persistence._
 import play.api.libs.json._
@@ -18,7 +18,7 @@ import protocols.{Configuration, StatusText}
 
 class PrinterSettingsRegistryActor(printersConnections: ActorRef)
 //(@Named("printers-connections") printersConnections: ActorRef) //TODO find way how move that part to Module.scala
-  extends PersistentActor with ActorLogging with Subscribers2 {
+  extends PersistentActor with ActorLogging with Subscribers {
 
   import actors.PrinterSettingsRegistryActor._
 

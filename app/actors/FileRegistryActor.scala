@@ -5,13 +5,13 @@
 package actors
 
 
-import actors.Subscribers2.{AfterAdd, AfterTerminated}
+import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.IO
 import ch.jodersky.flow.Serial
 import play.api.libs.json.{Json, OFormat}
 
-class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers2 {
+class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers {
 
   import actors.FileRegistryActor._
   import context._

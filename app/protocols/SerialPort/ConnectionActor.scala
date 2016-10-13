@@ -4,7 +4,7 @@
 
 package protocols.SerialPort
 
-import actors.Subscribers2.{AfterAdd, AfterTerminated}
+import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{ActorRef, Props, Terminated}
 import akka.io.IO
 import akka.util.ByteString

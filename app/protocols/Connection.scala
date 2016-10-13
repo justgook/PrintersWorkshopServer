@@ -5,7 +5,7 @@
 package protocols
 
 
-import actors.Subscribers2
+import actors.Subscribers
 import akka.actor.{Actor, ActorLogging}
 import play.api.libs.json._
 
@@ -14,7 +14,7 @@ import play.api.libs.json._
 /**
   * Created by Roman Potashow on 30.06.2016.
   */
-trait Connection extends Actor with ActorLogging with Subscribers2 {}
+trait Connection extends Actor with ActorLogging with Subscribers {}
 
 //switch (value) {
 //case "connected":

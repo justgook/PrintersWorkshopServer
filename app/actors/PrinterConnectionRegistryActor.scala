@@ -4,13 +4,13 @@
 
 package actors
 
-import actors.Subscribers2.{AfterAdd, AfterTerminated}
+import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import protocols.Connection.Status
 import protocols.{Configuration, StatusText}
 
 class PrinterConnectionRegistryActor
-  extends Actor with ActorLogging with Subscribers2 {
+  extends Actor with ActorLogging with Subscribers {
   log.info("PrinterConnectionRegistryActor Created")
 
   import actors.PrinterConnectionRegistryActor._
