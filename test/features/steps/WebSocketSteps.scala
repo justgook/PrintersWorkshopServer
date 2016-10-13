@@ -4,83 +4,81 @@
 
 package features.steps
 
-import java.net.URI
-
-import akka.actor.ActorSystem
+import akka.actor.Status.Failure
+import akka.actor.{ActorRef, ActorSystem}
+import akka.http.scaladsl.model.ws.TextMessage
 import akka.testkit.TestProbe
 import cucumber.api.scala.{EN, ScalaDsl}
-import helpers.WebSocketClient
-import helpers.WebSocketClient.Messages._
+import helpers.WebSocketAkkaClient
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 
 /**
   * Created by Roman Potashow on 22.08.2016.
   */
+
 trait WebSocketSteps extends ScalaDsl with EN {
   var probe: TestProbe = _
-  var socket: WebSocketClient = _
+  var socket: WebSocketAkkaClient = _
+  var writer: ActorRef = _
 
   implicit def system: ActorSystem
-
   def port: Int
 
-
   When("""^socket connected to "([^"]*)"$""") { (url: String) =>
-
-    //    system
     probe = TestProbe()
-    socket = WebSocketClient(new URI(s"ws://localhost:$port$url"), probe)
-    socket.connect()
-    probe.expectMsg(Connecting)
-    probe.expectMsg(Connected)
-    super.After(s => socket.disconnect())
+    val socketConnection = WebSocketAkkaClient(s"ws://localhost:$port$url")
+    writer = Await.result(socketConnection.open(probe.ref), 5.second)
   }
 
   When("""^initial state received$""") { () =>
     probe.fishForMessage(hint = "set not received") {
-      case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
-      case _                                                        => false
+      case TextMessage.Strict(str) if str.startsWith( """{"type":"set"""") => true
+      case _                                                               => false
     }
   }
 
   When("""^Client-socket send text '([^']*)'$""") { (text: String) =>
-    socket.send(s"""$text""")
+    writer ! TextMessage(s"""$text""")
   }
 
   When("""^Client-socket send "([^"]*)"$""") { (message: String) =>
     message match {
-      case "Ping"  => socket.send("""{"type":"ping"}""")
-      case "Reset" => socket.send("""{"type":"reset"}""")
+      case "Ping"  => writer ! TextMessage("""{"type":"ping"}""")
+      case "Reset" => writer ! TextMessage("""{"type":"reset"}""")
     }
   }
 
 
   Then("""^Client-socket got text message "([^"]*)"$""") { (message: String) =>
     probe.fishForMessage(/*max = 100.millis,*/ hint = s"$message not received") {
-      case TextMessage(m) => m == message
-      case _              => false
+      case TextMessage.Strict(m) => m == message
+      case _                     => false
     }
   }
   Then("""^Client-socket got "([^"]*)"$""") { (message: String) =>
     message match {
       case "Pong"         =>
         probe.fishForMessage(/*max = 100.millis,*/ hint = "pong not received") {
-          case TextMessage("""{"type":"pong"}""") => true
-          case _                                  => false
+          case TextMessage.Strict("""{"type":"pong"}""") => true
+          case _                                         => false
         }
       case "Disconnected" =>
-        probe.fishForMessage(/*max = 100.millis,*/ hint = "fail not received") {
-          case Disconnected(error) => true
-          case _                   => false
+        probe.fishForMessage(/*max = 100.millis,*/ hint = "Disconnected not received") {
+          case Failure(_) => true
+          case t          => false
         }
       case "Fail"         =>
         probe.fishForMessage(/*max = 100.millis,*/ hint = "fail not received") {
-          case TextMessage(str) if str.startsWith( """{"type":"fail"""") => true
-          case _                                                         => false
+          case TextMessage.Strict(str) if str.startsWith( """{"type":"fail"""") => true
+          case _                                                                => false
         }
       case "Set"          =>
         probe.fishForMessage(hint = "set not received") {
-          case TextMessage(str) if str.startsWith( """{"type":"set"""") => true
-          case _                                                        => false
+          case TextMessage.Strict(str) if str.startsWith( """{"type":"set"""") => true
+          case _                                                               => false
         }
     }
 

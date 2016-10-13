@@ -5,7 +5,7 @@
 package protocols
 
 
-import actors.Subscribers
+import actors.Subscribers2
 import akka.actor.{Actor, ActorLogging}
 import play.api.libs.json._
 
@@ -14,7 +14,7 @@ import play.api.libs.json._
 /**
   * Created by Roman Potashow on 30.06.2016.
   */
-trait Connection extends Actor with ActorLogging with Subscribers {}
+trait Connection extends Actor with ActorLogging with Subscribers2 {}
 
 //switch (value) {
 //case "connected":
@@ -38,14 +38,14 @@ trait Connection extends Actor with ActorLogging with Subscribers {}
 
 object StatusText extends Enumeration {
   type StatusText = Value
-  val Unknown    = Value("unknown")
-  val Remove     = Value("remove")
-  val Editing    = Value("editing")
+  val Unknown = Value("unknown")
+  val Remove = Value("remove")
+  val Editing = Value("editing")
   val Connecting = Value("connecting")
 
   val Connected = Value("connected")
-  val Ready     = Value("ready")
-  val Printing  = Value("printing")
+  val Ready = Value("ready")
+  val Printing = Value("printing")
   implicit val StatusTextFormat = new Format[StatusText] {
     def writes(myEnum: StatusText) = JsString(myEnum.toString)
 
@@ -57,13 +57,18 @@ object Connection {
   //  sealed trait Command
   //  object Kill extends Command
   //  implicit val configurationFormat = Json.format[Configuration]
-  implicit val progressFormat    = Json.format[Progress]
-  implicit val temperatureFormat = Json.format[Temperature]
-  implicit val statusFormat      = Json.format[Status]
+  implicit val progressFormat: OFormat[Progress] = Json.format[Progress]
+  implicit val temperatureFormat: OFormat[Temperature] = Json.format[Temperature]
+  implicit val statusFormat: OFormat[Status] = Json.format[Status]
+
   case class ConsoleInput(in: String)
+
   case class Status(progress: Option[Progress] = None, //ReadOnly Data
                     temperatures: Option[List[Temperature]] = None //ReadOnly Data
                    )
+
   case class Progress(done: Int, of: Int)
+
   case class Temperature(name: String = "unknown", data: List[Int] = List())
+
 }

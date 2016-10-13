@@ -17,7 +17,7 @@ trait Subscribers2 {
   //  def withSubscribers(subscribers: Set[ActorRef])(fn: Receive): Receive = receiveExtend(subscribers) orElse fn
 
   def subscribersParser(subscribers: Set[ActorRef]): Receive = {
-    case Subscribers.Add(subscriber) =>
+    case Subscribers2.Add(subscriber) =>
       log.debug("{}({}) got new subscriber", self.path.name, this.getClass.getName)
       context watch subscriber
       val newSubscribers = subscribers + subscriber

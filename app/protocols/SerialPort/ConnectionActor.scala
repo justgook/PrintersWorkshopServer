@@ -4,6 +4,7 @@
 
 package protocols.SerialPort
 
+import actors.Subscribers2.{AfterAdd, AfterTerminated}
 import akka.actor.{ActorRef, Props, Terminated}
 import akka.io.IO
 import akka.util.ByteString
@@ -19,44 +20,62 @@ class ConnectionActor(config: SerialPortConfiguration) extends Connection {
   import ConnectionActor._
   import context._
 
-  val port = config.port
+  val port: String = config.port
 
   val aSettings: SerialSettings = SerialSettings(config.baud, config.cs, config.tsb, Parity(config.parity))
-  var status                    = Status()
+  var status = Status()
 
   log.info(s"Requesting manager to open port: $port, baud: ${aSettings.baud}")
   //  context.parent ! status.withText(StatusText.Connecting)
   IO(Serial) ! Serial.Open(port, aSettings)
 
 
-  override def afterAdd(client: ActorRef): Unit = {
-    log.info("got direct connection")
-    subscribers.route("CONNECTED", self)
-  }
+  //  override def afterAdd(client: ActorRef): Unit = {
+  //    log.info("got direct connection")
+  //    subscribers.route("CONNECTED", self)
+  //  }
 
   //  override def afterTerminated(subscriber: ActorRef): Unit = {
   //    subscribers.route(ConnectionCountUpdate(subscribers.routees.size), self)
   //  }
 
-  def receive = withSubscribers {
-    case Serial.CommandFailed(cmd, reason) =>
+  override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {}
+
+  override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
+
+  def receive: Receive = subscribersParser(Set.empty).orElse[Any, Unit](opening(Set.empty))
+
+  def opening(subscribers: Set[ActorRef]): Receive = {
+    case AfterTerminated(_, newSubscribers)      =>
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](opening(subscribers))
+    case AfterAdd(newSubscriber, newSubscribers) =>
+      log.info("got direct connection")
+      newSubscriber ! "CONNECTED"
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](opening(newSubscribers))
+    case Serial.CommandFailed(cmd, reason)       =>
       log.error(s"Connection failed, stopping terminal. Reason: $reason")
       context stop self
-
-    case Serial.Opened(p) =>
+    case Serial.Opened(p)                        =>
       log.info(s"Port $p is now open.")
       val operator = sender
-      context become opened(operator)
+      context become subscribersParser(subscribers).orElse[Any, Unit](opened(operator, subscribers))
       context watch operator
       context.parent ! status
   }
 
-  def opened(operator: ActorRef): Receive = withSubscribers {
+
+  def opened(operator: ActorRef, subscribers: Set[ActorRef]): Receive = {
+
+    case AfterTerminated(_, newSubscribers)      =>
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](opened(operator, subscribers))
+    case AfterAdd(newSubscriber, newSubscribers) =>
+      log.info("got direct connection")
+      newSubscriber ! "CONNECTED"
+      context become subscribersParser(newSubscribers).orElse[Any, Unit](opened(operator, newSubscribers))
 
     case Serial.Received(data) =>
       log.info(s"Received data: ${formatData(data)}")
-      subscribers.route(new String(data.toArray, "UTF-8"), self)
-
+      subscribers.foreach(c => c ! new String(data.toArray, "UTF-8"))
     //    case Terminal.Wrote(data) => log.info(s"Wrote data: ${formatData(data)}")
 
     case Serial.Closed =>
@@ -79,10 +98,12 @@ class ConnectionActor(config: SerialPortConfiguration) extends Connection {
   }
 
 }
+
 object ConnectionActor {
   def props(config: SerialPortConfiguration) = Props(new ConnectionActor(config))
 
   private def formatData(data: ByteString) = data.mkString("[", ",", "]") + " " + new String(data.toArray, "UTF-8")
+
   case class Wrote(data: ByteString) extends Serial.Event
 
   //  case object EOT

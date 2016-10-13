@@ -19,7 +19,7 @@ trait GlobalHooks extends ScalaDsl {
   implicit var system: ActorSystem = _
   var server: TestServer = _
 
-  Before() { s =>
+  Before() { _ =>
     system = ActorSystem("MySpec", PersistenceSuiteTrait.config())
     val app = new GuiceApplicationBuilder()
               .overrides(bind[ActorSystem].toInstance(system))
@@ -28,7 +28,7 @@ trait GlobalHooks extends ScalaDsl {
     server.start()
   }
 
-  After() { s =>
+  After() { _ =>
     system.terminate()
     Await.result(system.whenTerminated, 5 seconds)
     server.stop()

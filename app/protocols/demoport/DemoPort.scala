@@ -4,9 +4,9 @@
 
 package protocols.demoport
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.Props
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OFormat}
 import protocols.Connection.{Progress, Status, Temperature}
 import protocols.Property._
 import protocols.{Configuration, Connection, Protocol, Settings}
@@ -51,13 +51,9 @@ object DemoPort extends Protocol {
     )
 
 
-    override def afterAdd(client: ActorRef): Unit = {
-      subscribers.route("ConnectionCountUpdate(subscribers.routees.size)", self)
-    }
-
     context.parent ! status
 
-    def receive = {
+    def receive: Receive = {
       case msg => Logger.warn(s"${self.path.name}(${this.getClass.getName}) unknown message received '$msg'")
     }
   }
@@ -66,7 +62,7 @@ object DemoPort extends Protocol {
     def props(config: DemoPortConfiguration) = Props(new ConnectionActor())
   }
   object DemoPortConfiguration {
-    implicit val demoPortConfigurationFormat = Json.format[DemoPortConfiguration]
+    implicit val demoPortConfigurationFormat: OFormat[DemoPortConfiguration] = Json.format[DemoPortConfiguration]
   }
 
 }

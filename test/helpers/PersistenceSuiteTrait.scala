@@ -8,17 +8,11 @@ package helpers
   * Created by Roman Potashow on 22.08.2016.
   */
 
-import com.typesafe.config.ConfigFactory
-
-//import akka.testkit.TestKit
-//import akka.testkit.ImplicitSender
-//import org.scalatest.BeforeAndAfterAll
-//import org.scalatest.Matchers
-//import org.scalatest.WordSpecLike
+import com.typesafe.config.{Config, ConfigFactory}
 
 object PersistenceSuiteTrait {
 
-  def config() = ConfigFactory.parseString(
+  def config(): Config = ConfigFactory.parseString(
     s"""akka.loglevel = "ERROR"
         akka.persistence.journal.plugin = "$journalId"
          akka.persistence.snapshot-store.plugin = "$snapStoreId"

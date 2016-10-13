@@ -4,10 +4,10 @@
 
 package helpers
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.http.scaladsl.model.ws.TextMessage
 import akka.testkit.TestProbe
 import gnieh.diffson.playJson._
-import helpers.WebSocketClient.Messages._
 import play.api.libs.json.{JsArray, JsObject, Json}
 
 /**
@@ -18,11 +18,11 @@ class StateObserver(testProbe: TestProbe) extends Actor with ActorLogging {
   var revision        = 0
 
   def receive: Receive = {
-    case (array: JsArray, socket: WebSocketClient)                   =>
+    case (array: JsArray, writer: ActorRef) =>
       val patch = JsonPatch.parse(s"$array")
-      socket.send(s"""{"type":"update", "revision": ${revision + 1}, "args": $array}""")
+      writer ! TextMessage(s"""{"type":"update", "revision": ${revision + 1}, "args": $array}""")
       state = patch(state).as[JsObject]
-    case TextMessage(str)                                                  =>
+    case TextMessage.Strict(str)            =>
       val json = Json.parse(str)
       (json \ "type").as[String] match {
         case "set"     =>
@@ -39,7 +39,7 @@ class StateObserver(testProbe: TestProbe) extends Actor with ActorLogging {
           testProbe.ref ! (state, revision)
         case t         => log.warning(s"StateObserver unknown message $str")
       }
-    case msg@(Connecting | Connected | Disconnecting | Disconnected(None)) => testProbe.ref ! msg
+    //    case msg@(Connecting | Connected | Disconnecting | Disconnected(None)) => testProbe.ref ! msg
     case msg                                                               => log.error(s"\nUnexpected message: $msg\n")
   }
 }

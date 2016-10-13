@@ -4,14 +4,14 @@
 
 package features.steps
 
-import java.net.URI
-
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestProbe
 import cucumber.api.scala.{EN, ScalaDsl}
-import helpers.WebSocketClient.Messages.{Connected, Connecting}
-import helpers.{StateObserver, WebSocketClient}
+import helpers.{StateObserver, WebSocketAkkaClient}
 import play.api.libs.json._
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 //import play.api.libs.json.JsObject
 
@@ -21,15 +21,15 @@ import play.api.libs.json._
 trait ClientState extends ScalaDsl with EN {
   var client: ActorRef = _
   var `state-probe`: TestProbe = _
-  var `state-socket`: WebSocketClient = _
+  var writer: ActorRef // = _
 
   //  var clientStateSocket: WebSocketClient = _
   implicit def system: ActorSystem
 
   def port: Int
 
-  def sendUpdate(args: JsArray) = {
-    client ! (args, `state-socket`)
+  def sendUpdate(args: JsArray): Unit = {
+    client ! (args, writer)
     awaitSuccess()
   }
 
@@ -43,15 +43,13 @@ trait ClientState extends ScalaDsl with EN {
   Given("""^Client-State connected to "([^"]*)"$""") { (url: String) =>
     `state-probe` = TestProbe()
     client = system.actorOf(StateObserver.props(`state-probe`))
-    `state-socket` = WebSocketClient(new URI(s"ws://localhost:$port$url"), client)
-    `state-socket`.connect()
-    `state-probe`.expectMsg(Connecting)
-    `state-probe`.expectMsg(Connected)
+    val socketConnection = WebSocketAkkaClient(s"ws://localhost:$port$url")
+    writer = Await.result(socketConnection.open(client), 5.second)
     `state-probe`.fishForMessage(hint = "state not got") {
       case (state: JsObject, rev) => rev == 1
       case _                      => false
     }
-    super.After(s => `state-socket`.disconnect())
+
   }
 
   When("""^Client-State create printer with name "([^"]*)"$""") { (name: String) =>

@@ -26,7 +26,7 @@ class TerminalWebSocketActor(out: ActorRef, name: String, printersConnections: A
   result match {
     case connection: ActorRef =>
       log.info(s"$connection ! Subscribers.Add($self)")
-      connection ! Subscribers.Add(self)
+      connection ! Subscribers2.Add(self)
       context become opened(connection)
     case None                 =>
       log.warning(s"Printer '$name' not found")
