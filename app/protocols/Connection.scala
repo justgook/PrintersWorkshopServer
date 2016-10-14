@@ -49,7 +49,10 @@ object StatusText extends Enumeration {
   implicit val StatusTextFormat = new Format[StatusText] {
     def writes(myEnum: StatusText) = JsString(myEnum.toString)
 
-    def reads(json: JsValue) = JsSuccess(StatusText.withName(json.as[String]))
+    def reads(json: JsValue): JsSuccess[StatusText.Value] = {
+      val result = StatusText.values.find(_.toString == json.as[String]).getOrElse(Unknown)
+      JsSuccess(result)
+    }
   }
 }
 
