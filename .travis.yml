@@ -1,20 +1,25 @@
 sudo: required
 language: scala
-
 cache:
   directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot/
+  - "$HOME/.ivy2/cache"
+  - "$HOME/.sbt/boot/"
 jdk:
-  - oraclejdk8
+- oraclejdk8
 scala:
-  - 2.11.8
-
+- 2.11.8
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y socat
+- sudo apt-get -qq update
+- sudo apt-get install -y socat
 before_script:
-  - socat -d -d pty,raw,link=/tmp/a,echo=0 pty,raw,link=/tmp/b,echo=0 &
+- socat -d -d pty,raw,link=/tmp/a,echo=0 pty,raw,link=/tmp/b,echo=0 &
 script:
-  - "sbt clean coverage test"
-after_success: "sbt coverageReport coveralls"
+- sbt clean coverage test
+after_success:
+- sbt coverageReport coveralls
+- sbt coverageReport
+- sbt coverageAggregate
+- sbt codacyCoverage
+env:
+  global:
+    secure: 5CAzzll2vDlkPEXTT/vvxzHY9MBafaaXHW7mvbG9l86ghT7q9Hu/JWnxz7+vFiuvq9N9WzNLutjPshgsj6rdEdBSTQfGWL/O6LxPVCNcxPCBtuphh5gn/6Pm6iyorMeu6dITepFURYHx3qr7qhMEXUlD5OsT6mrEYKCYfP3UTlb6DYYCBcsArMH3Cdu1h2KTjKsWd1Gaa77xnFUejV65M4yWZBd3rRhbwQsyRAqm2LwauU9Ly9cCxuJCERkfPFD3UnruT4EFEic5AnIkHRH6FnpKSYs278vELHcjURncPLAYpsvvXFscBjpsJu6iUMjpww9MBi9pCxirA5lRUhmqsecO6WQNx+IUzZO4RcsshQnuDfuQGc2XCvLIzfNsNZMXGglfoP/fmTtmgE+hmnNS0Eet9mXSo0cGFBzGEkoyZ9GTHfmticKe1U2dBrCwpa2yafsiylxN0JGTsu9husY9DjPtlz6pK9bZXgxqi4k4XXKgfpZ8j0/i8S7gkzYSa7RTKGFUpfLA3EIiZ0eT7I+iPydnHPJaEubn8BHV2/AovN5IXgHIZvqRsRHKsWrOKRrTrr1cwgIed/g2GyNTPudytFbuRCKPs32hgQd+niHbbESWslwqyoeeUP4yDK76AeEXVz1XtBcKfZ+FH3fWSGRx0MOcpEwOo39Or0Jz6l5dOfg=
