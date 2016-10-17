@@ -16,5 +16,8 @@ package features.steps
 //import cucumber.api.DataTable
 //import cucumber.api.PendingException
 
-class StepDefinitions extends GlobalHooks with WebSocketSteps with ClientState
+class StepDefinitions extends GlobalHooks
+  with WebSocketSteps
+  with ClientState
+  with ActorBackdoor
 

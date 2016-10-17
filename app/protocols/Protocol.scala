@@ -9,11 +9,7 @@ package protocols
   */
 trait Protocol {
   def name: String
-
   def settings: Settings
-
-  //  def connection(): AnyRef
-
 }
 
 object Protocol {

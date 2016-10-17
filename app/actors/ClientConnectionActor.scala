@@ -132,7 +132,7 @@ class ClientConnectionActor(
   def withDefaultMessages(fn: Receive): Receive = {
     case Ping       => out ! Pong
     case Reset      => out ! SetState(revision, state)
-    case Unknown(t) => out ! Fail(Fail.Status.UNKNOWN_MESSAGE)
+    case Unknown(_) => out ! Fail(Fail.Status.UNKNOWN_MESSAGE)
     case other      => fn(other)
   }
 }

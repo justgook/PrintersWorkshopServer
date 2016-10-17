@@ -9,7 +9,6 @@ import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{ActorLogging, ActorRef, PoisonPill, Props}
 import akka.persistence._
 import play.api.libs.json._
-import protocols.StatusText.StatusText
 import protocols.{Configuration, StatusText}
 
 /**
@@ -17,7 +16,6 @@ import protocols.{Configuration, StatusText}
   */
 
 class PrinterSettingsRegistryActor(printersConnections: ActorRef)
-//(@Named("printers-connections") printersConnections: ActorRef) //TODO find way how move that part to Module.scala
   extends PersistentActor with ActorLogging with Subscribers {
 
   import actors.PrinterSettingsRegistryActor._
@@ -25,7 +23,6 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
   override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {}
 
   override def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = {}
-
 
 
   def persistenceId: String = "PrinterSettingsRegistryActor"
@@ -146,7 +143,7 @@ object PrinterSettingsRegistryActor {
   case class NewPrinter(status: StatusText) extends Printer
 
   case class ConfiguredPrinter(status: StatusText, settings: Configuration) extends Printer {
-    def withStatus(s: StatusText) = copy(status = s)
+    def withStatus(s: StatusText): ConfiguredPrinter = copy(status = s)
   }
 
   case class ExampleState(events: List[(String, JsValue)] = List.empty) {
@@ -156,8 +153,8 @@ object PrinterSettingsRegistryActor {
   }
 
   object Printer {
-    implicit val newPrinterFormat = Json.format[NewPrinter]
-    implicit val configuredPrinterFormat = Json.format[ConfiguredPrinter]
+    implicit val newPrinterFormat: OFormat[NewPrinter] = Json.format[NewPrinter]
+    implicit val configuredPrinterFormat: OFormat[ConfiguredPrinter] = Json.format[ConfiguredPrinter]
     implicit val printerFormat = new Format[Printer] {
       //
       override def writes(o: Printer): JsValue = {

@@ -4,7 +4,7 @@
 
 package protocols
 
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OFormat}
 import protocols.Property._
 
 /**
@@ -25,7 +25,7 @@ package object SerialPort
   case class SerialPortConfiguration(port: String, baud: Int, cs: Int, tsb: Boolean, parity: Int) extends Configuration
 
   object SerialPortConfiguration {
-    implicit val serialPortConfigurationFormat = Json.format[SerialPortConfiguration]
+    implicit val serialPortConfigurationFormat: OFormat[SerialPortConfiguration] = Json.format[SerialPortConfiguration]
   }
 
 

@@ -26,6 +26,7 @@ trait Subscribers {
       val newSubscribers = subscribers - subscriber
       self ! AfterTerminated(subscriber, newSubscribers)
       afterTerminated(subscriber, newSubscribers)
+    case ex: Exception                                             ⇒ throw ex
   }
 
   def afterTerminated(subscriber: ActorRef, subscribers: Set[ActorRef]): Unit = context.become(subscribersParser(subscribers))

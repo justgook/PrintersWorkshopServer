@@ -19,6 +19,7 @@ package object protocols {
 
     override def writes(o: Configuration): JsValue = {
       def write[T: Writes](x: T) = implicitly[Writes[T]].writes(x)
+
       val (name: String, props) = o match {
         case config: SerialPortConfiguration => ("serialport", Some(write(config)))
         case config: DemoPortConfiguration   => ("demoport", Some(write(config)))
@@ -31,25 +32,28 @@ package object protocols {
 
     override def reads(json: JsValue): JsResult[Configuration] = {
       def read[T: Reads] = implicitly[Reads[T]].reads((json \ "properties").get)
+
       (json \ "name").asOpt[String] match {
         case Some("serialport") => read[SerialPortConfiguration]
         case Some("demoport")   => read[DemoPortConfiguration]
-        case _            => JsError()
+        case _                  => JsError()
       }
 
     }
 
   }
   // TODO change to Actor that will react on Settings changes and put that list inside it as tuples of Optional[Watcher] + Optional[Setting]
-  var settings = List(DemoPort.settings, SerialPort.settings)
+  val settings = List(DemoPort.settings, SerialPort.settings)
 
   def connect(config: Configuration, context: ActorContext): ActorRef = config match {
     case config: SerialPortConfiguration =>
+      println("!!SerialPortConfiguration!!")
       context.actorOf(SerialPort.ConnectionActor.props(config = config))
     case config: DemoPortConfiguration   =>
+      println("!!DemoPortConfiguration!!")
       context.actorOf(DemoPort.ConnectionActor.props(config = config))
-    //    case msg => Logger.warn(s"connect(${this.getClass.getName}) unknown connection type '${config.name}'");
   }
+
   trait Configuration
 
 }

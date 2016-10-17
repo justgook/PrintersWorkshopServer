@@ -14,6 +14,7 @@ coverageEnabled.in(Test, test) := true
 //libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
 val akkaV = "2.4.11"
+val betterFilesV = "2.16.0"
 val `odersky-flow` = "3.0.3"
 val diffsonV = "2.0.2"
 val cucumberV = "1.2.5"
@@ -22,7 +23,7 @@ libraryDependencies ++= Seq(
   cache,
   ws,
   //main artifact Serial-port
-
+  "com.github.pathikrit" %% "better-files" % betterFilesV,
   "ch.jodersky" %% "flow-core" % `odersky-flow`,
   "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime",
   "org.gnieh" %% "diffson" % diffsonV,

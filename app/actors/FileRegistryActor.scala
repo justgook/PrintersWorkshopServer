@@ -5,16 +5,44 @@
 package actors
 
 
+import java.io.{File => JFile}
+import java.nio.file.{StandardWatchEventKinds => EventType}
+
 import actors.Subscribers.{AfterAdd, AfterTerminated}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.io.IO
 import ch.jodersky.flow.Serial
 import play.api.libs.json.{Json, OFormat}
 
+import scala.language.postfixOps
+
+
 class FileRegistryActor(directory: String) extends Actor with ActorLogging with Subscribers {
+
+  //  val file: File = "/tmp" / "test.txt"
+  //  file.overwrite("hello")
+  //  file.appendLine().append("world")
+  //  assert(file.contentAsString == "hello\nworld")
+  //
+  //  val myDir: File = File(directory)
+  //  //  onEvent
+  //  val watcher = new ThreadBackedFileMonitor(myDir, recursive = true) {
+  //    override def onEvent(eventType: WatchEvent.Kind[Path], file: File): Unit = eventType match {
+  //      case EventType.ENTRY_CREATE => println(s"$file got created")
+  //      case EventType.ENTRY_MODIFY => println(s"$file got modified")
+  //      case EventType.ENTRY_DELETE => println(s"$file got deleted")
+  //    }
+  //  }
+
+  //
+  //  watcher.start()
+  //
+  ////  FileWatcher
+  ////  val watcher2: ActorRef = myDir.newWatcher(recursive = true)
 
   import actors.FileRegistryActor._
   import context._
+
 
   IO(Serial) ! Serial.Watch(directory)
 

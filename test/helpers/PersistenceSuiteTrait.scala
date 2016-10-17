@@ -13,7 +13,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 object PersistenceSuiteTrait {
 
   def config(): Config = ConfigFactory.parseString(
-    s"""akka.loglevel = "ERROR"
+    s"""akka.loglevel = "OFF"
         akka.persistence.journal.plugin = "$journalId"
          akka.persistence.snapshot-store.plugin = "$snapStoreId"
          $journalId {

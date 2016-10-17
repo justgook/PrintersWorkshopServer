@@ -21,9 +21,9 @@ import scala.concurrent.duration._
 trait ClientState extends ScalaDsl with EN {
   var client: ActorRef = _
   var `state-probe`: TestProbe = _
-  var writer: ActorRef // = _
+  var writer: ActorRef
 
-  //  var clientStateSocket: WebSocketClient = _
+
   implicit def system: ActorSystem
 
   def port: Int
