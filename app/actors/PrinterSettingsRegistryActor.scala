@@ -27,8 +27,6 @@ class PrinterSettingsRegistryActor(printersConnections: ActorRef)
 
   def persistenceId: String = "PrinterSettingsRegistryActor"
 
-  //  override def afterAdd(client: ActorRef): Unit = client ! Printers(list = printers)
-
   def restore(printers: Map[String, Printer]): Receive = {
     case SnapshotOffer(metadata, snapshot: ExampleState) =>
       val list = (for (

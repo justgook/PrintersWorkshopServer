@@ -47,10 +47,8 @@ package object protocols {
 
   def connect(config: Configuration, context: ActorContext): ActorRef = config match {
     case config: SerialPortConfiguration =>
-      println("!!SerialPortConfiguration!!")
       context.actorOf(SerialPort.ConnectionActor.props(config = config))
     case config: DemoPortConfiguration   =>
-      println("!!DemoPortConfiguration!!")
       context.actorOf(DemoPort.ConnectionActor.props(config = config))
   }
 

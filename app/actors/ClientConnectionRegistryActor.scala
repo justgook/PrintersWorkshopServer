@@ -21,18 +21,6 @@ class ClientConnectionRegistryActor extends Actor with ActorLogging with Subscri
     super.afterTerminated(client, subscribers)
   }
 
-  override def postRestart(reason: Throwable): Unit = {
-    println("ClientConnectionRegistryActor: postRestart")
-    super.postRestart(reason)
-  }
-
-  override def preRestart(reason: Throwable, message: Option[Any]) {
-    println("ClientConnectionRegistryActor: preRestart")
-    super.preRestart(reason, message)
-  }
-
-
-
   def receive: Receive = subscribersParser(Set.empty)
 }
 

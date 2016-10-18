@@ -16,13 +16,6 @@ import protocols.Protocol.SettingsList
 
 class ProtocolsRegistryActor extends Actor with ActorLogging with Subscribers {
 
-  //  override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1.second) {
-  //    case _: ArithmeticException      => Resume
-  //    case _: NullPointerException     => Restart
-  //    case _: IllegalArgumentException => Stop
-  //    case _: Exception                => Escalate
-  //  }
-
   override def afterAdd(client: ActorRef, subscribers: Set[ActorRef]): Unit = {
     client ! SettingsList(protocols.settings) // TODO update it to real Connection Check / update not just static array
     super.afterAdd(client, subscribers)
@@ -30,22 +23,22 @@ class ProtocolsRegistryActor extends Actor with ActorLogging with Subscribers {
 
   def receive: Receive = subscribersParser(Set.empty)
 
-  override def preStart {
-    println("ProtocolsRegistryActor: preStart")
-  }
-
-  override def postStop {
-    println("ProtocolsRegistryActor: postStop")
-  }
-
-  override def preRestart(reason: Throwable, message: Option[Any]) {
-    println(s"ProtocolsRegistryActor: preRestart - $message  ")
-    message match {
-      case Some(m) => self ! m
-      case None    =>
-    }
-    super.preRestart(reason, message)
-  }
+  //  override def preStart {
+  //    println("ProtocolsRegistryActor: preStart")
+  //  }
+  //
+  //  override def postStop {
+  //    println("ProtocolsRegistryActor: postStop")
+  //  }
+  //
+  //  override def preRestart(reason: Throwable, message: Option[Any]) {
+  //    println(s"ProtocolsRegistryActor: preRestart - $message  ")
+  //    message match {
+  //      case Some(m) => self ! m
+  //      case None    =>
+  //    }
+  //    super.preRestart(reason, message)
+  //  }
 }
 
 object ProtocolsRegistryActor {
