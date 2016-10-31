@@ -3,7 +3,7 @@ import scala.language.postfixOps
 name := "PrinterWorkshopServer"
 version := "1.0.0-SNAPSHOT"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val root = (project in file(".")).enablePlugins(PlayScala, PlayAkkaHttpServer).disablePlugins(PlayNettyServer)
 
 ivyConfigurations += (config("external") hide)
 
@@ -27,8 +27,8 @@ libraryDependencies ++= Seq(
   "ch.jodersky" %% "flow-core" % `odersky-flow`,
   "ch.jodersky" % "flow-native" % `odersky-flow` % "runtime",
   "org.gnieh" %% "diffson" % diffsonV,
+  "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-http-core" % akkaV,
   "com.typesafe.akka" %% "akka-persistence" % akkaV,
 
   "junit" % "junit" % "4.12",

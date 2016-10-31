@@ -11,9 +11,12 @@ package helpers
 import com.typesafe.config.{Config, ConfigFactory}
 
 object PersistenceSuiteTrait {
-
-  def config(): Config = ConfigFactory.parseString(
-    s"""akka.loglevel = "OFF"
+  val originalConfig: Config = ConfigFactory.load()
+  def config(): Config ={
+    val config = ConfigFactory.parseString(
+      s"""
+        akka.loglevel = OFF
+        akka.stdout-loglevel = OFF
         akka.persistence.journal.plugin = "$journalId"
          akka.persistence.snapshot-store.plugin = "$snapStoreId"
          $journalId {
@@ -24,7 +27,10 @@ object PersistenceSuiteTrait {
           class = "org.dmonix.akka.persistence.SnapshotStorePlugin"
           plugin-dispatcher = "akka.persistence.dispatchers.default-plugin-dispatcher"
          }
-         """)
+         """).withFallback(originalConfig)
+    config
+  }
+
 
   def journalId = "dummy-journal"
 
