@@ -15,7 +15,7 @@ coverageEnabled.in(Test, test) := true
 
 val akkaV = "2.4.14"
 val betterFilesV = "2.16.0"
-val `odersky-flow` = "3.0.3"
+val `odersky-flow` = "3.0.4"
 val diffsonV = "2.0.2"
 val cucumberV = "1.2.5"
 libraryDependencies ++= Seq(
